@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="100%" height="100%">
+  <defs>
+    <linearGradient id="tuboGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="50%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <linearGradient id="playGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e0e7ff" />
+    </linearGradient>
+  </defs>
+
+  <rect width="192" height="192" rx="48" fill="#090d16" />
+  <rect x="10" y="10" width="172" height="172" rx="40" fill="none" stroke="url(#tuboGrad)" stroke-width="3" opacity="0.4" />
+
+  <rect x="44" y="56" width="104" height="80" rx="24" fill="url(#tuboGrad)" />
+  <path d="M84 78 L122 96 L84 114 Z" fill="url(#playGrad)" />
+  <circle cx="128" cy="68" r="5" fill="#38bdf8" />
+</svg>
