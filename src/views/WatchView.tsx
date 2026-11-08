@@ -61,16 +61,17 @@ export const WatchView: React.FC<WatchViewProps> = ({
     if (finto) { setReviewState('idle'); return; }
     const salvato = loadReview(video.id);
     if (salvato) { setReview(salvato); setReviewState('idle'); return; }
-    const ctrl = new AbortController();
+    // se esci dalla pagina prima della risposta il lavoro non si butta: si salva e lo ritrovi
+    let attivo = true;
     setReviewState('loading');
-    reviewVideo({ video, provider, settings, signal: ctrl.signal })
-      .then((r) => { saveReview(video.id, r); setReview(r); setReviewState('idle'); })
+    reviewVideo({ video, provider, settings })
+      .then((r) => { saveReview(video.id, r); if (attivo) { setReview(r); setReviewState('idle'); } })
       .catch((e: any) => {
-        if (ctrl.signal.aborted) return;
+        if (!attivo) return;
         setReviewError(e?.message || 'Errore');
         setReviewState('error');
       });
-    return () => ctrl.abort();
+    return () => { attivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.id]);
 
