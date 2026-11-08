@@ -235,3 +235,25 @@ export function removeSavedSearch(query: string, provider: AiProvider): SavedSea
   try { setStorageItem(SEARCHES_KEY, JSON.stringify(list)); } catch { /* niente */ }
   return list;
 }
+
+// Riassunti e commenti già preparati (per non rifarli a ogni apertura)
+const REVIEWS_KEY = 'tubo_commenti_v1';
+
+export function loadReview(videoId: string): { riassunto: string; commento: string } | null {
+  try {
+    const all = JSON.parse(getStorageItem(REVIEWS_KEY) || '{}');
+    return all[videoId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveReview(videoId: string, review: { riassunto: string; commento: string }): void {
+  try {
+    const all = JSON.parse(getStorageItem(REVIEWS_KEY) || '{}');
+    all[videoId] = review;
+    const ids = Object.keys(all);
+    for (const id of ids.slice(0, Math.max(0, ids.length - 300))) delete all[id];   // ne tiene 300
+    setStorageItem(REVIEWS_KEY, JSON.stringify(all));
+  } catch { /* niente */ }
+}

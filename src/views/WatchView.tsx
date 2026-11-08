@@ -9,7 +9,9 @@ import {
   ArrowLeft,
   Clock,
 } from 'lucide-react';
-import { VideoItem } from '../types';
+import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS } from '../types';
+import { reviewVideo, VideoReview } from '../searchOrchestrator';
+import { loadReview, saveReview } from '../storage';
 import { formatViews, formatDate } from '../youtube';
 
 interface WatchViewProps {
@@ -20,6 +22,9 @@ interface WatchViewProps {
   isSavedInWatchLater: boolean;
   onToggleWatchLater: (video: VideoItem) => void;
   onBack: () => void;
+  settings: AppSettings;
+  provider: AiProvider;
+  demo: boolean;
 }
 
 export const WatchView: React.FC<WatchViewProps> = ({
@@ -30,6 +35,9 @@ export const WatchView: React.FC<WatchViewProps> = ({
   isSavedInWatchLater,
   onToggleWatchLater,
   onBack,
+  settings,
+  provider,
+  demo,
 }) => {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -38,6 +46,32 @@ export const WatchView: React.FC<WatchViewProps> = ({
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsDescriptionExpanded(false);
+  }, [video.id]);
+
+
+  // Riassunto e commento del voto: preparati dall'AI all'apertura, poi ricordati
+  const [review, setReview] = useState<VideoReview | null>(null);
+  const [reviewState, setReviewState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [reviewError, setReviewError] = useState('');
+  const finto = demo || video.id.startsWith('demo-') || video.id.includes('CLICKBAIT');
+
+  useEffect(() => {
+    setReview(null);
+    setReviewError('');
+    if (finto) { setReviewState('idle'); return; }
+    const salvato = loadReview(video.id);
+    if (salvato) { setReview(salvato); setReviewState('idle'); return; }
+    const ctrl = new AbortController();
+    setReviewState('loading');
+    reviewVideo({ video, provider, settings, signal: ctrl.signal })
+      .then((r) => { saveReview(video.id, r); setReview(r); setReviewState('idle'); })
+      .catch((e: any) => {
+        if (ctrl.signal.aborted) return;
+        setReviewError(e?.message || 'Errore');
+        setReviewState('error');
+      });
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.id]);
 
   const handleShare = () => {
@@ -172,6 +206,31 @@ export const WatchView: React.FC<WatchViewProps> = ({
               <p className="text-sm text-slate-200 light:text-slate-700 leading-relaxed italic">
                 «{video.aiReason}»
               </p>
+              {!finto && (
+                <div className="mt-4 space-y-3 text-sm leading-relaxed">
+                  {reviewState === 'loading' && (
+                    <p className="text-slate-400 animate-pulse">
+                      {AI_PROVIDERS[provider]?.name ?? provider} prepara riassunto e commento…
+                    </p>
+                  )}
+                  {reviewState === 'error' && (
+                    <p className="text-red-400">Riassunto non disponibile: {reviewError}</p>
+                  )}
+                  {review && (
+                    <>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300 light:text-indigo-600 mb-1">Riassunto</h4>
+                        <p className="text-slate-200 light:text-slate-700">{review.riassunto}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300 light:text-indigo-600 mb-1">Perché questo voto</h4>
+                        <p className="text-slate-200 light:text-slate-700">{review.commento}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Dal titolo e dalla descrizione del video: l'AI non lo ha guardato.</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

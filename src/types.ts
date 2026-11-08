@@ -53,6 +53,9 @@ export interface VideoItem {
   thumbnailUrl: string;
   aiScore?: number; // 0 - 10
   aiReason?: string;
+  aiQuery?: string;      // la richiesta per cui l'AI ha dato il voto
+  aiSummary?: string;    // riassunto preparato all'apertura del video
+  aiComment?: string;    // commento che giustifica il voto
 }
 
 export interface SearchPlan {

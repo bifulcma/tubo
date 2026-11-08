@@ -317,6 +317,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
       ...v,
       aiScore: evaluation ? Math.max(0, Math.min(10, evaluation.punteggio)) : 5.0,
       aiReason: evaluation ? evaluation.motivo : 'Video selezionato dalla ricerca.',
+      aiQuery: query,
     };
   });
 
@@ -331,4 +332,50 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
   });
 
   return scoredVideos;
+}
+
+
+// --- Riassunto e commento del voto, preparati quando si apre un video ---
+export interface VideoReview {
+  riassunto: string;
+  commento: string;
+}
+
+export async function reviewVideo(opts: {
+  video: VideoItem;
+  provider: AiProvider;
+  settings: AppSettings;
+  signal?: AbortSignal;
+  fetchFn?: typeof fetch;
+}): Promise<VideoReview> {
+  const { video, provider, settings, signal, fetchFn } = opts;
+  const voto = typeof video.aiScore === 'number' ? `${video.aiScore}/10` : 'non assegnato';
+  const system = `Sei un curatore di video critico e onesto. Hai SOLO titolo, canale, durata e descrizione del video (non lo hai visto): non inventare contenuti che lì non compaiono. Scrivi in italiano.
+Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "2-3 frasi su che cosa tratta il video", "commento": "2-3 frasi che giustificano il voto ${voto} rispetto alla richiesta dell'utente: punti di forza, limiti, per chi è adatto"}.`;
+  const prompt = JSON.stringify({
+    richiesta_utente: video.aiQuery || '',
+    voto: voto,
+    motivo_breve: video.aiReason || '',
+    titolo: video.title,
+    canale: video.channelTitle,
+    durata: video.duration,
+    descrizione: (video.description || '').slice(0, 3000),
+  }, null, 2);
+  const raw = await askBridge({
+    bridgeUrl: settings.bridgeUrl,
+    token: settings.bridgeToken,
+    provider,
+    prompt,
+    system,
+    signal,
+    fetchFn,
+  });
+  let r: Partial<VideoReview> = {};
+  try {
+    r = extractAndParseJson<VideoReview>(raw);
+  } catch {
+    throw new Error("L'AI non ha risposto nel formato atteso.");
+  }
+  if (!r.riassunto || !r.commento) throw new Error("L'AI non ha risposto nel formato atteso.");
+  return { riassunto: String(r.riassunto), commento: String(r.commento) };
 }

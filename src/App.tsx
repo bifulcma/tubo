@@ -176,12 +176,17 @@ export default function App() {
 
   // Calcola video suggeriti per la pagina video
   const currentSuggested = useMemo(() => {
-    if (searchResults.length > 1) {
+    if (searchResults.length > 1 && (!activeVideo || searchResults.some((v) => v.id === activeVideo.id))) {
       return searchResults;
     }
-    if (!isDemoMode(settings)) return history.map((h) => h.video);
+    if (!isDemoMode(settings)) {
+      // video aperto dalla cronologia: i suggeriti sono gli altri risultati della ricerca da cui veniva
+      const origine = activeVideo && savedSearches.find((ss) => ss.results.some((v) => v.id === activeVideo.id));
+      if (origine) return origine.results;
+      return history.map((h) => h.video);
+    }
     return DEMO_VIDEOS.filter((v) => !v.id.includes('CLICKBAIT'));
-  }, [searchResults, settings, history]);
+  }, [searchResults, settings, history, activeVideo, savedSearches]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 light:bg-slate-50 light:text-slate-900 transition-colors">
@@ -243,6 +248,9 @@ export default function App() {
             onSelectChannel={handleSelectChannel}
             isSavedInWatchLater={savedVideoIds.has(activeVideo.id)}
             onToggleWatchLater={handleToggleWatchLater}
+            settings={settings}
+            provider={selectedAi}
+            demo={showDemoBanner}
             onBack={() => {
               if (searchResults.length > 0) {
                 setActivePage('search');
