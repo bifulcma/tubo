@@ -14,6 +14,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultProvider: 'qwen',
   demoMode: false,
   theme: 'dark',
+  aiLanguage: 'it',
+  videoLanguages: [],
 };
 
 const memoryStore = new Map<string, string>();

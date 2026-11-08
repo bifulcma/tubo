@@ -1,4 +1,4 @@
-import { AiProvider, AppSettings, SearchPlan, SearchStatus, VideoEvaluation, VideoItem } from './types';
+import { AiProvider, AppSettings, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua } from './types';
 import { askBridge, fetchTranscript, transcriptToText } from './ponte';
 import { mockAiEvaluateVideos, mockAiFetchVideos, mockAiPlanSearch } from './demo/mockAi';
 import { fetchYouTubeVideoDetails, searchYouTubeVideos } from './youtube';
@@ -80,7 +80,11 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     await sleep(400);
     plan = mockAiPlanSearch(query);
   } else {
-    const systemPrompt = `Sei il motore di ricerca di Tubo. Analizza la richiesta in linguaggio naturale dell'utente e pianifica da 2 a 4 ricerche mirate per YouTube, identificando lingue, durata minima in minuti ed eventuali termini da escludere. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido nel seguente formato: {"ricerche": ["query 1", "query 2"], "lingue": ["it", "de"], "durata_minima_min": 0, "escludi": ["parola1"]}. Non aggiungere alcun testo, commento o spiegazione oltre al JSON.`;
+    const systemPrompt = `Sei il motore di ricerca di Tubo. Analizza la richiesta in linguaggio naturale dell'utente e pianifica da 2 a 4 ricerche mirate per YouTube, identificando lingue, durata minima in minuti ed eventuali termini da escludere. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido nel seguente formato: {"ricerche": ["query 1", "query 2"], "lingue": ["it", "de"], "durata_minima_min": 0, "escludi": ["parola1"]}. Non aggiungere alcun testo, commento o spiegazione oltre al JSON.${
+      settings.videoLanguages?.length
+        ? ` L'utente preferisce video in: ${settings.videoLanguages.map(nomeLingua).join(', ')} (codici ${settings.videoLanguages.join(', ')}): scrivi le ricerche in quelle lingue e mettile in "lingue", salvo che la richiesta ne chieda esplicitamente altre.`
+        : ''
+    }`;
 
     let planRaw: string;
     try {
@@ -169,6 +173,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
           query: singleQuery,
           apiKey: settings.youtubeApiKey,
           maxResults: 12,
+          relevanceLanguage: settings.videoLanguages?.length === 1 ? settings.videoLanguages[0] : undefined,
           fetchFn,
         });
         ids.forEach((id) => allVideoIds.add(id));
@@ -248,7 +253,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
       descrizione: v.description.slice(0, 200),
     }));
 
-    const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase"}]. Nessun testo prima o dopo.`;
+    const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Scrivi il motivo in ${nomeLingua(settings.aiLanguage)}. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase"}]. Nessun testo prima o dopo.`;
 
     let evalRaw: string;
     try {
@@ -363,7 +368,7 @@ export async function reviewVideo(opts: {
 }): Promise<VideoReview> {
   const { video, provider, settings, signal, fetchFn } = opts;
   const voto = typeof video.aiScore === 'number' ? `${video.aiScore}/10` : 'non assegnato';
-  const system = `Sei un curatore di video critico e onesto. Hai SOLO titolo, canale, durata e descrizione del video (non lo hai visto): non inventare contenuti che lì non compaiono. Scrivi in italiano.
+  const system = `Sei un curatore di video critico e onesto. Hai SOLO titolo, canale, durata e descrizione del video (non lo hai visto): non inventare contenuti che lì non compaiono. Scrivi in ${nomeLingua(settings.aiLanguage)}.
 Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "2-3 frasi su che cosa tratta il video", "commento": "2-3 frasi che giustificano il voto ${voto} rispetto alla richiesta dell'utente: punti di forza, limiti, per chi è adatto"}.`;
   const prompt = JSON.stringify({
     richiesta_utente: video.aiQuery || '',
@@ -419,9 +424,9 @@ export async function digestFromTranscript(opts: {
   const txt = await transcriptText(video, settings, fetchFn);
   const breve = txt.length < 2500;   // video di pochi minuti: niente capitoli
   const system = breve
-    ? `Hai la trascrizione completa di un video breve. Scrivi in italiano, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
+    ? `Hai la trascrizione completa di un video breve. Scrivi in ${nomeLingua(settings.aiLanguage)}, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
 Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "2-4 frasi: che cosa dice e con quale tesi", "capitoli": []}.`
-    : `Hai la trascrizione completa di un video, a blocchi con l'orario [mm:ss]. Scrivi in italiano, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
+    : `Hai la trascrizione completa di un video, a blocchi con l'orario [mm:ss]. Scrivi in ${nomeLingua(settings.aiLanguage)}, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
 Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "5-8 frasi: tesi principali, argomenti, conclusione", "capitoli": [{"t": secondi_di_inizio, "titolo": "titolo breve del capitolo"}]} con 5-10 capitoli in ordine di tempo; "t" deve essere un numero di secondi preso dagli orari della trascrizione.`;
   const raw = await askConRiprova({
     bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system: system + SOLO_TESTO, fetchFn,
@@ -441,7 +446,7 @@ export async function findMoment(opts: {
 }): Promise<{ t: number; spiegazione: string } | null> {
   const { video, provider, settings, domanda, fetchFn } = opts;
   const txt = await transcriptText(video, settings, fetchFn);
-  const system = `Hai la trascrizione di un video a blocchi con l'orario [mm:ss]. Trova il punto in cui si parla di ciò che chiede l'utente. Scrivi in italiano.
+  const system = `Hai la trascrizione di un video a blocchi con l'orario [mm:ss]. Trova il punto in cui si parla di ciò che chiede l'utente. Scrivi in ${nomeLingua(settings.aiLanguage)}.
 Rispondi ESCLUSIVAMENTE con JSON: {"t": secondi_di_inizio, "spiegazione": "una frase su che cosa si dice lì"} oppure {"t": null, "spiegazione": "non se ne parla"} se l'argomento non c'è.`;
   const raw = await askConRiprova({
     bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system: system + SOLO_TESTO, fetchFn,

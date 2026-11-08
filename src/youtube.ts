@@ -72,13 +72,14 @@ export interface YouTubeSearchParams {
   apiKey: string;
   maxResults?: number;
   fetchFn?: typeof fetch;
+  relevanceLanguage?: string;
 }
 
 /**
  * Esegue la ricerca tramite search.list di YouTube Data API v3.
  */
 export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<string[]> {
-  const { query, apiKey, maxResults = 12, fetchFn = fetch } = params;
+  const { query, apiKey, maxResults = 12, fetchFn = fetch, relevanceLanguage } = params;
 
   if (!apiKey) {
     throw new Error('Chiave API di YouTube non configurata.');
@@ -90,6 +91,7 @@ export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<
   url.searchParams.set('maxResults', maxResults.toString());
   url.searchParams.set('q', query);
   url.searchParams.set('key', apiKey);
+  if (relevanceLanguage) url.searchParams.set('relevanceLanguage', relevanceLanguage);
 
   const res = await fetchFn(url.toString());
   if (!res.ok) {

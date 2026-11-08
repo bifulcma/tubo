@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   RotateCcw,
 } from 'lucide-react';
-import { AiProvider, AI_PROVIDERS, AppSettings } from '../types';
+import { AiProvider, AI_PROVIDERS, AppSettings, LINGUE } from '../types';
 import { DEFAULT_BRIDGE_URL } from '../storage';
 import { askBridge } from '../ponte';
 
@@ -37,6 +37,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [bridgeToken, setBridgeToken] = useState(settings.bridgeToken);
   const [defaultProvider, setDefaultProvider] = useState<AiProvider>(settings.defaultProvider);
   const [demoMode, setDemoMode] = useState(settings.demoMode);
+  const [aiLanguage, setAiLanguage] = useState(settings.aiLanguage || 'it');
+  const [videoLanguages, setVideoLanguages] = useState<string[]>(settings.videoLanguages || []);
 
   const [showApiKey, setShowApiKey] = useState(false);
   const [showBridgeToken, setShowBridgeToken] = useState(false);
@@ -52,6 +54,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       bridgeToken: bridgeToken.trim(),
       defaultProvider,
       demoMode,
+      aiLanguage,
+      videoLanguages,
     });
     setSaveStatus('Impostazioni salvate con successo in localStorage!');
     setTimeout(() => setSaveStatus(null), 3000);
@@ -300,6 +304,52 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Lingua */}
+        <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 light:bg-white light:border-slate-200 space-y-4">
+          <h3 className="font-bold text-sm sm:text-base text-white light:text-slate-900">Lingua</h3>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 mb-1.5">
+              Lingua dell'AI (motivi, riassunti, commenti, capitoli)
+            </label>
+            <select
+              value={aiLanguage}
+              onChange={(e) => setAiLanguage(e.target.value)}
+              className="w-full sm:w-64 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 light:bg-slate-50 light:border-slate-200 light:text-slate-900"
+            >
+              {LINGUE.map((l) => (
+                <option key={l.code} value={l.code}>{l.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 light:text-slate-700 mb-1.5">
+              Lingue preferite dei video
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {LINGUE.map((l) => {
+                const on = videoLanguages.includes(l.code);
+                return (
+                  <button
+                    type="button"
+                    key={l.code}
+                    onClick={() => setVideoLanguages(on ? videoLanguages.filter((c) => c !== l.code) : [...videoLanguages, l.code])}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border cursor-pointer transition ${
+                      on
+                        ? 'bg-indigo-600 border-indigo-500 text-white'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-600 light:bg-slate-50 light:border-slate-200 light:text-slate-700'
+                    }`}
+                  >
+                    {on ? '✓ ' : ''}{l.nome}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-slate-400 light:text-slate-500">
+              Nessuna scelta = decide l'AI dalla tua domanda. Le ricerche si fanno nelle lingue scelte, salvo che la domanda ne chieda altre.
+            </p>
           </div>
         </div>
 

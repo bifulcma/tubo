@@ -88,6 +88,8 @@ export interface AppSettings {
   defaultProvider: AiProvider;
   demoMode: boolean;
   theme: 'dark' | 'light';
+  aiLanguage: string;        // lingua delle risposte dell'AI (codice: it, en, de, fr, es)
+  videoLanguages: string[];  // lingue preferite dei video; vuoto = decide l'AI
 }
 
 export interface HistoryEntry {
@@ -101,4 +103,16 @@ export interface SavedSearch {
   at: number;
   status: SearchStatus;
   results: VideoItem[];
+}
+
+export const LINGUE: { code: string; nome: string; nomeNelPrompt: string }[] = [
+  { code: 'it', nome: 'Italiano', nomeNelPrompt: 'italiano' },
+  { code: 'en', nome: 'English', nomeNelPrompt: 'inglese' },
+  { code: 'de', nome: 'Deutsch', nomeNelPrompt: 'tedesco' },
+  { code: 'fr', nome: 'Français', nomeNelPrompt: 'francese' },
+  { code: 'es', nome: 'Español', nomeNelPrompt: 'spagnolo' },
+];
+
+export function nomeLingua(code: string): string {
+  return LINGUE.find((l) => l.code === code)?.nomeNelPrompt ?? 'italiano';
 }

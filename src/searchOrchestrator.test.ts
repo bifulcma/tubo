@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   extractAndParseJson,
   isDemoMode,
@@ -35,7 +35,7 @@ describe('searchOrchestrator.ts', () => {
         bridgeToken: 'token',
         defaultProvider: 'qwen',
         demoMode: true,
-        theme: 'dark',
+        theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
       expect(isDemoMode(s)).toBe(true);
     });
@@ -47,7 +47,7 @@ describe('searchOrchestrator.ts', () => {
         bridgeToken: '',
         defaultProvider: 'qwen',
         demoMode: false,
-        theme: 'dark',
+        theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
       expect(isDemoMode(s)).toBe(true);
     });
@@ -59,7 +59,7 @@ describe('searchOrchestrator.ts', () => {
         bridgeToken: 'mytoken',
         defaultProvider: 'qwen',
         demoMode: false,
-        theme: 'dark',
+        theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
       expect(isDemoMode(s)).toBe(false);
     });
@@ -74,7 +74,7 @@ describe('searchOrchestrator.ts', () => {
         bridgeToken: '',
         defaultProvider: 'qwen',
         demoMode: true,
-        theme: 'dark',
+        theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
 
       const videos = await executeAiSearch({
@@ -110,5 +110,23 @@ describe('searchOrchestrator.ts', () => {
         expect(clickbait.aiReason?.toLowerCase()).toContain('scartato');
       }
     });
+  });
+});
+
+describe('lingua', () => {
+  it('nomeLingua traduce i codici e torna all\'italiano se sconosciuto', async () => {
+    const { nomeLingua } = await import('./types');
+    expect(nomeLingua('de')).toBe('tedesco');
+    expect(nomeLingua('xx')).toBe('italiano');
+  });
+
+  it('il riassunto usa la lingua scelta nelle istruzioni', async () => {
+    const { reviewVideo } = await import('./searchOrchestrator');
+    const enc = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({ start(c) { c.enqueue(enc.encode('event: text\ndata: {"t": "{\\"riassunto\\": \\"a\\", \\"commento\\": \\"b\\"}"}\n\nevent: done\ndata: {}\n\n')); c.close(); } });
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200, body });
+    const video: any = { id: 'abc12345678', title: 't', channelTitle: 'c', description: '', duration: '1:00', aiScore: 5 };
+    await reviewVideo({ video, provider: 'gemma', settings: { youtubeApiKey: 'k', bridgeUrl: 'https://p', bridgeToken: 'x', defaultProvider: 'qwen', demoMode: false, theme: 'dark', aiLanguage: 'de', videoLanguages: [] }, fetchFn: fetchFn as any });
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body).system).toContain('Scrivi in tedesco');
   });
 });
