@@ -335,6 +335,19 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
 }
 
 
+// L'AI (soprattutto Argon) a volte torna senza risposta: si riprova una volta.
+// Argon lavora nella cartella dei libri di Penna: gli si dice di non cercare file.
+const SOLO_TESTO = '\nNon usare strumenti e non cercare file: rispondi subito, solo dal testo che ti do qui.';
+
+async function askConRiprova(o: Parameters<typeof askBridge>[0]): Promise<string> {
+  try {
+    return await askBridge(o);
+  } catch (e) {
+    if (o.signal?.aborted) throw e;
+    return await askBridge(o);
+  }
+}
+
 // --- Riassunto e commento del voto, preparati quando si apre un video ---
 export interface VideoReview {
   riassunto: string;
@@ -361,12 +374,12 @@ Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "2-3 frasi su che cos
     durata: video.duration,
     descrizione: (video.description || '').slice(0, 3000),
   }, null, 2);
-  const raw = await askBridge({
+  const raw = await askConRiprova({
     bridgeUrl: settings.bridgeUrl,
     token: settings.bridgeToken,
     provider,
     prompt,
-    system,
+    system: system + SOLO_TESTO,
     signal,
     fetchFn,
   });
@@ -404,10 +417,14 @@ export async function digestFromTranscript(opts: {
 }): Promise<TranscriptDigest> {
   const { video, provider, settings, fetchFn } = opts;
   const txt = await transcriptText(video, settings, fetchFn);
-  const system = `Hai la trascrizione completa di un video, a blocchi con l'orario [mm:ss]. Scrivi in italiano, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
+  const breve = txt.length < 2500;   // video di pochi minuti: niente capitoli
+  const system = breve
+    ? `Hai la trascrizione completa di un video breve. Scrivi in italiano, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
+Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "2-4 frasi: che cosa dice e con quale tesi", "capitoli": []}.`
+    : `Hai la trascrizione completa di un video, a blocchi con l'orario [mm:ss]. Scrivi in italiano, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
 Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "5-8 frasi: tesi principali, argomenti, conclusione", "capitoli": [{"t": secondi_di_inizio, "titolo": "titolo breve del capitolo"}]} con 5-10 capitoli in ordine di tempo; "t" deve essere un numero di secondi preso dagli orari della trascrizione.`;
-  const raw = await askBridge({
-    bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system, fetchFn,
+  const raw = await askConRiprova({
+    bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system: system + SOLO_TESTO, fetchFn,
     prompt: `Video: «${video.title}» (${video.channelTitle})\nRichiesta dell'utente: ${video.aiQuery || '-'}\n\nTRASCRIZIONE:\n${txt}`,
   });
   const d = extractAndParseJson<TranscriptDigest>(raw);
@@ -426,8 +443,8 @@ export async function findMoment(opts: {
   const txt = await transcriptText(video, settings, fetchFn);
   const system = `Hai la trascrizione di un video a blocchi con l'orario [mm:ss]. Trova il punto in cui si parla di ciò che chiede l'utente. Scrivi in italiano.
 Rispondi ESCLUSIVAMENTE con JSON: {"t": secondi_di_inizio, "spiegazione": "una frase su che cosa si dice lì"} oppure {"t": null, "spiegazione": "non se ne parla"} se l'argomento non c'è.`;
-  const raw = await askBridge({
-    bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system, fetchFn,
+  const raw = await askConRiprova({
+    bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system: system + SOLO_TESTO, fetchFn,
     prompt: `Cerco: ${domanda}\n\nTRASCRIZIONE:\n${txt}`,
   });
   const d = extractAndParseJson<{ t: number | null; spiegazione: string }>(raw);
