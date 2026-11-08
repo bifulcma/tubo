@@ -93,3 +93,16 @@ describe('storage.ts', () => {
     expect(isVideoInWatchLater('test-1')).toBe(false);
   });
 });
+
+describe('ultime ricerche', () => {
+  it('salva, toglie i doppioni e rimuove', async () => {
+    const { saveSearch, loadSavedSearches, removeSavedSearch } = await import('./storage');
+    const base = { provider: 'gemma' as const, at: 1, status: { step: 'done' as const, message: 'ok' }, results: [] };
+    saveSearch({ ...base, query: 'Schmitt' });
+    saveSearch({ ...base, query: 'Bach' });
+    saveSearch({ ...base, query: 'schmitt ', at: 2 });
+    const list = loadSavedSearches();
+    expect(list.map((e) => e.query)).toEqual(['schmitt ', 'Bach']);
+    expect(removeSavedSearch('Bach', 'gemma').map((e) => e.query)).toEqual(['schmitt ']);
+  });
+});

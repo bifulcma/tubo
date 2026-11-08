@@ -1,4 +1,4 @@
-import { AppSettings, HistoryEntry, VideoItem, AiProvider } from './types';
+import { AppSettings, HistoryEntry, VideoItem, AiProvider, SavedSearch } from './types';
 
 export const DEFAULT_BRIDGE_URL: string = '';
 
@@ -202,4 +202,36 @@ export function removeFromWatchLater(videoId: string): VideoItem[] {
   } catch {
     return [];
   }
+}
+
+// Ultime ricerche: si riaprono subito, senza far lavorare di nuovo l'AI
+const SEARCHES_KEY = 'tubo_searches_v1';
+const MAX_SEARCHES = 15;
+
+export function loadSavedSearches(): SavedSearch[] {
+  try {
+    const raw = getStorageItem(SEARCHES_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveSearch(entry: SavedSearch): SavedSearch[] {
+  const key = (e: SavedSearch) => e.query.trim().toLowerCase() + '|' + e.provider;
+  const list = [entry, ...loadSavedSearches().filter((e) => key(e) !== key(entry))].slice(0, MAX_SEARCHES);
+  try {
+    setStorageItem(SEARCHES_KEY, JSON.stringify(list));
+  } catch {
+    // spazio pieno: si tiene solo la ricerca appena fatta
+    try { setStorageItem(SEARCHES_KEY, JSON.stringify([entry])); } catch { /* niente */ }
+  }
+  return list;
+}
+
+export function removeSavedSearch(query: string, provider: AiProvider): SavedSearch[] {
+  const list = loadSavedSearches().filter((e) => !(e.query === query && e.provider === provider));
+  try { setStorageItem(SEARCHES_KEY, JSON.stringify(list)); } catch { /* niente */ }
+  return list;
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Sparkles, Compass, Flame } from 'lucide-react';
-import { VideoItem } from '../types';
+import { Sparkles, Compass, Flame, History, X } from 'lucide-react';
+import { VideoItem, SavedSearch, AI_PROVIDERS } from '../types';
 import { VideoGrid } from '../components/VideoGrid';
 import { DEMO_VIDEOS } from '../demo/mockVideos';
 
@@ -12,6 +12,9 @@ interface HomeViewProps {
   onToggleWatchLater: (video: VideoItem) => void;
   demo: boolean;
   recentVideos: VideoItem[];
+  savedSearches: SavedSearch[];
+  onOpenSavedSearch: (s: SavedSearch) => void;
+  onRemoveSavedSearch: (s: SavedSearch) => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -22,6 +25,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onToggleWatchLater,
   demo,
   recentVideos,
+  savedSearches,
+  onOpenSavedSearch,
+  onRemoveSavedSearch,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Tutti');
 
@@ -53,6 +59,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
     aiScore: v.aiScore ?? 9.2,
     aiReason: v.aiReason ?? 'Video consigliato per rigore concettuale e qualità dei contenuti.',
   }));
+
+
+  const quando = (t: number) => {
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return 'adesso';
+    if (m < 60) return `${m} min fa`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} h fa`;
+    const g = Math.round(h / 24);
+    return g === 1 ? 'ieri' : `${g} giorni fa`;
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -95,6 +112,43 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
       </section>
+
+      {/* Ultime ricerche: si riaprono subito, senza far lavorare l'AI */}
+      {!demo && savedSearches.length > 0 && (
+        <section>
+          <h2 className="text-lg sm:text-xl font-bold text-white light:text-slate-900 flex items-center gap-2 mb-3">
+            <History className="w-5 h-5 text-indigo-400" />
+            <span>Ultime ricerche</span>
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {savedSearches.map((ss) => (
+              <div
+                key={ss.query + ss.provider}
+                className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 light:bg-white light:border-slate-200 transition"
+              >
+                <button
+                  onClick={() => onOpenSavedSearch(ss)}
+                  className="text-left cursor-pointer"
+                  title="Riapri i risultati salvati"
+                >
+                  <span className="block text-sm font-medium text-slate-200 light:text-slate-800 max-w-[22rem] truncate">«{ss.query}»</span>
+                  <span className="block text-[11px] text-slate-400">
+                    {AI_PROVIDERS[ss.provider]?.name ?? ss.provider} · {ss.results.length} video · {quando(ss.at)}
+                  </span>
+                </button>
+                <button
+                  onClick={() => onRemoveSavedSearch(ss)}
+                  className="p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-slate-800 cursor-pointer"
+                  title="Togli dalle ultime ricerche"
+                  aria-label="Togli dalle ultime ricerche"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Category Filter Pills (solo nei dati dimostrativi) */}
       {demo && <section className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">

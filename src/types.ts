@@ -33,7 +33,7 @@ export const AI_PROVIDERS: Record<AiProvider, AiProviderConfig> = {
   argon: {
     id: 'argon',
     name: 'Argon (Gemini Flash)',
-    description: 'Google Gemini 2.0 Flash, rapido e versatile',
+    description: 'Google Gemini 3.8 Flash via Antigravity, rapido',
     isLocal: false,
     badge: 'Cloud',
   },
@@ -90,4 +90,12 @@ export interface AppSettings {
 export interface HistoryEntry {
   video: VideoItem;
   watchedAt: number;
+}
+
+export interface SavedSearch {
+  query: string;
+  provider: AiProvider;
+  at: number;
+  status: SearchStatus;
+  results: VideoItem[];
 }

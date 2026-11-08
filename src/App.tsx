@@ -3,6 +3,7 @@ import {
   AiProvider,
   AppSettings,
   HistoryEntry,
+  SavedSearch,
   SearchStatus,
   VideoItem,
 } from './types';
@@ -17,6 +18,9 @@ import {
   clearHistory,
   loadWatchLater,
   toggleWatchLater,
+  loadSavedSearches,
+  saveSearch,
+  removeSavedSearch,
 } from './storage';
 import { executeAiSearch, isDemoMode } from './searchOrchestrator';
 import { DEMO_VIDEOS } from './demo/mockVideos';
@@ -53,6 +57,7 @@ export default function App() {
     message: '',
   });
   const [searchResults, setSearchResults] = useState<VideoItem[]>([]);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => loadSavedSearches());
 
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [activeChannel, setActiveChannel] = useState<{ id: string; title: string } | null>(null);
@@ -118,19 +123,37 @@ export default function App() {
       });
 
       try {
+        let ultimo: SearchStatus | null = null;
         const results = await executeAiSearch({
           query,
           provider: selectedAi,
           settings,
-          onStatusUpdate: (st) => setSearchStatus(st),
+          onStatusUpdate: (st) => {
+            ultimo = st;
+            setSearchStatus(st);
+          },
         });
         setSearchResults(results);
+        if (results.length > 0 && !isDemoMode(settings) && ultimo) {
+          setSavedSearches(saveSearch({ query, provider: selectedAi, at: Date.now(), status: ultimo, results }));
+        }
       } catch (err: any) {
         console.error('Errore durante la ricerca AI:', err);
       }
     },
     [selectedAi, settings]
   );
+
+  const handleOpenSavedSearch = (saved: SavedSearch) => {
+    setSearchQuery(saved.query);
+    setSearchResults(saved.results);
+    setSearchStatus(saved.status);
+    setActivePage('search');
+  };
+
+  const handleRemoveSavedSearch = (saved: SavedSearch) => {
+    setSavedSearches(removeSavedSearch(saved.query, saved.provider));
+  };
 
   const handleClearHistory = () => {
     clearHistory();
@@ -191,6 +214,9 @@ export default function App() {
             onToggleWatchLater={handleToggleWatchLater}
             demo={showDemoBanner}
             recentVideos={history.map((h) => h.video).slice(0, 12)}
+            savedSearches={savedSearches}
+            onOpenSavedSearch={handleOpenSavedSearch}
+            onRemoveSavedSearch={handleRemoveSavedSearch}
           />
         )}
 
