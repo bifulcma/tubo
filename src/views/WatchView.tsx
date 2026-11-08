@@ -10,8 +10,8 @@ import {
   Clock,
 } from 'lucide-react';
 import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS } from '../types';
-import { reviewVideo, VideoReview } from '../searchOrchestrator';
-import { loadReview, saveReview } from '../storage';
+import { reviewVideo, VideoReview, digestFromTranscript, findMoment, TranscriptDigest } from '../searchOrchestrator';
+import { loadReview, saveReview, loadDigest, saveDigest } from '../storage';
 import { formatViews, formatDate } from '../youtube';
 
 interface WatchViewProps {
@@ -75,6 +75,55 @@ export const WatchView: React.FC<WatchViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.id]);
 
+
+  // Dalla trascrizione: riassunto a capitoli e «portami al punto in cui…»
+  const [startAt, setStartAt] = useState(0);
+  const [digest, setDigest] = useState<TranscriptDigest | null>(null);
+  const [digestState, setDigestState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [digestError, setDigestError] = useState('');
+  const [domanda, setDomanda] = useState('');
+  const [momento, setMomento] = useState<{ stato: 'idle' | 'loading' | 'ok' | 'nessuno' | 'error'; t?: number; testo?: string }>({ stato: 'idle' });
+
+  useEffect(() => {
+    setStartAt(0);
+    setDigest(loadDigest(video.id));
+    setDigestState('idle');
+    setDigestError('');
+    setDomanda('');
+    setMomento({ stato: 'idle' });
+  }, [video.id]);
+
+  const mmss = (t: number) => {
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = Math.floor(t % 60);
+    return (h ? `${h}:${String(m).padStart(2, '0')}` : `${m}`) + `:${String(sec).padStart(2, '0')}`;
+  };
+
+  const vaiA = (t: number) => {
+    setStartAt(t);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const riassumiTrascrizione = () => {
+    const vid = video.id;
+    setDigestState('loading');
+    setDigestError('');
+    digestFromTranscript({ video, provider, settings })
+      .then((d) => { saveDigest(vid, d); if (vid === video.id) { setDigest(d); setDigestState('idle'); } })
+      .catch((e: any) => { setDigestError(e?.message || 'Errore'); setDigestState('error'); });
+  };
+
+  const cercaMomento = () => {
+    if (!domanda.trim()) return;
+    setMomento({ stato: 'loading' });
+    findMoment({ video, provider, settings, domanda })
+      .then((r) => {
+        if (!r) { setMomento({ stato: 'nessuno' }); return; }
+        setMomento({ stato: 'ok', t: r.t, testo: r.spiegazione });
+        vaiA(r.t);
+      })
+      .catch((e: any) => setMomento({ stato: 'error', testo: e?.message || 'Errore' }));
+  };
+
   const handleShare = () => {
     const shareUrl = `https://www.youtube.com/watch?v=${video.id}`;
     if (navigator.clipboard) {
@@ -127,7 +176,8 @@ export const WatchView: React.FC<WatchViewProps> = ({
               </div>
             ) : (
             <iframe
-              src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&rel=0`}
+              key={`${video.id}-${startAt}`}
+              src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&rel=0${startAt ? `&start=${startAt}` : ''}`}
               title={video.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
@@ -232,6 +282,75 @@ export const WatchView: React.FC<WatchViewProps> = ({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Dalla trascrizione */}
+          {!finto && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 light:bg-white light:border-slate-200 space-y-4">
+              <h3 className="text-sm font-bold text-white light:text-slate-900">Dalla trascrizione del video</h3>
+
+              {digest ? (
+                <div className="space-y-3 text-sm leading-relaxed">
+                  <p className="text-slate-200 light:text-slate-700">{digest.riassunto}</p>
+                  {digest.capitoli.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300 light:text-indigo-600 mb-1.5">Capitoli</h4>
+                      <ul className="space-y-1">
+                        {digest.capitoli.map((c, i) => (
+                          <li key={i}>
+                            <button onClick={() => vaiA(c.t)} className="text-left cursor-pointer hover:text-indigo-300 text-slate-300 light:text-slate-700">
+                              <span className="font-mono text-indigo-400 mr-2">{mmss(c.t)}</span>{c.titolo}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <button
+                    onClick={riassumiTrascrizione}
+                    disabled={digestState === 'loading'}
+                    className="px-3.5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-60 cursor-pointer"
+                  >
+                    {digestState === 'loading' ? 'Leggo la trascrizione…' : 'Riassumi dalla trascrizione (con capitoli)'}
+                  </button>
+                  {digestState === 'loading' && (
+                    <p className="mt-2 text-xs text-slate-400 animate-pulse">{AI_PROVIDERS[provider]?.name ?? provider} legge tutto il video: per una lezione lunga può volerci un minuto o due.</p>
+                  )}
+                  {digestState === 'error' && <p className="mt-2 text-sm text-red-400">{digestError}</p>}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Portami al punto in cui…</label>
+                <div className="flex gap-2">
+                  <input
+                    value={domanda}
+                    onChange={(e) => setDomanda(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') cercaMomento(); }}
+                    placeholder="es. parla di Peterson e del katechon"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 light:bg-slate-50 light:border-slate-200 light:text-slate-900"
+                  />
+                  <button
+                    onClick={cercaMomento}
+                    disabled={momento.stato === 'loading' || !domanda.trim()}
+                    className="px-3.5 py-2 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-60 cursor-pointer"
+                  >
+                    {momento.stato === 'loading' ? 'Cerco…' : 'Vai'}
+                  </button>
+                </div>
+                {momento.stato === 'ok' && (
+                  <p className="mt-2 text-sm text-slate-300 light:text-slate-700">
+                    <button onClick={() => vaiA(momento.t!)} className="font-mono text-indigo-400 mr-2 cursor-pointer">{mmss(momento.t!)}</button>
+                    {momento.testo}
+                  </p>
+                )}
+                {momento.stato === 'nessuno' && <p className="mt-2 text-sm text-slate-400">Nella trascrizione non se ne parla.</p>}
+                {momento.stato === 'error' && <p className="mt-2 text-sm text-red-400">{momento.testo}</p>}
+              </div>
             </div>
           )}
 

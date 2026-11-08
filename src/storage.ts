@@ -257,3 +257,20 @@ export function saveReview(videoId: string, review: { riassunto: string; comment
     setStorageItem(REVIEWS_KEY, JSON.stringify(all));
   } catch { /* niente */ }
 }
+
+// Riassunti dalla trascrizione (con capitoli), per video
+const DIGEST_KEY = 'tubo_trascrizioni_v1';
+
+export function loadDigest(videoId: string): { riassunto: string; capitoli: { t: number; titolo: string }[] } | null {
+  try { return JSON.parse(getStorageItem(DIGEST_KEY) || '{}')[videoId] ?? null; } catch { return null; }
+}
+
+export function saveDigest(videoId: string, d: { riassunto: string; capitoli: { t: number; titolo: string }[] }): void {
+  try {
+    const all = JSON.parse(getStorageItem(DIGEST_KEY) || '{}');
+    all[videoId] = d;
+    const ids = Object.keys(all);
+    for (const id of ids.slice(0, Math.max(0, ids.length - 200))) delete all[id];
+    setStorageItem(DIGEST_KEY, JSON.stringify(all));
+  } catch { /* niente */ }
+}

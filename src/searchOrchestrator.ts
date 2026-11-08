@@ -1,5 +1,5 @@
 import { AiProvider, AppSettings, SearchPlan, SearchStatus, VideoEvaluation, VideoItem } from './types';
-import { askBridge } from './ponte';
+import { askBridge, fetchTranscript, transcriptToText } from './ponte';
 import { mockAiEvaluateVideos, mockAiFetchVideos, mockAiPlanSearch } from './demo/mockAi';
 import { fetchYouTubeVideoDetails, searchYouTubeVideos } from './youtube';
 
@@ -378,4 +378,59 @@ Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "2-3 frasi su che cos
   }
   if (!r.riassunto || !r.commento) throw new Error("L'AI non ha risposto nel formato atteso.");
   return { riassunto: String(r.riassunto), commento: String(r.commento) };
+}
+
+
+// --- Dalla trascrizione: riassunto a capitoli e ricerca di un punto preciso ---
+export interface TranscriptDigest {
+  riassunto: string;
+  capitoli: { t: number; titolo: string }[];
+}
+
+const transcriptCache = new Map<string, string>();
+
+async function transcriptText(video: VideoItem, settings: AppSettings, fetchFn?: typeof fetch): Promise<string> {
+  const c = transcriptCache.get(video.id);
+  if (c) return c;
+  const segs = await fetchTranscript({ bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, videoId: video.id, fetchFn });
+  if (!segs.length) throw new Error('Questo video non ha sottotitoli.');
+  const txt = transcriptToText(segs);
+  transcriptCache.set(video.id, txt);
+  return txt;
+}
+
+export async function digestFromTranscript(opts: {
+  video: VideoItem; provider: AiProvider; settings: AppSettings; fetchFn?: typeof fetch;
+}): Promise<TranscriptDigest> {
+  const { video, provider, settings, fetchFn } = opts;
+  const txt = await transcriptText(video, settings, fetchFn);
+  const system = `Hai la trascrizione completa di un video, a blocchi con l'orario [mm:ss]. Scrivi in italiano, anche se il video è in un'altra lingua. Non inventare nulla che non sia nella trascrizione.
+Rispondi ESCLUSIVAMENTE con un oggetto JSON: {"riassunto": "5-8 frasi: tesi principali, argomenti, conclusione", "capitoli": [{"t": secondi_di_inizio, "titolo": "titolo breve del capitolo"}]} con 5-10 capitoli in ordine di tempo; "t" deve essere un numero di secondi preso dagli orari della trascrizione.`;
+  const raw = await askBridge({
+    bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system, fetchFn,
+    prompt: `Video: «${video.title}» (${video.channelTitle})\nRichiesta dell'utente: ${video.aiQuery || '-'}\n\nTRASCRIZIONE:\n${txt}`,
+  });
+  const d = extractAndParseJson<TranscriptDigest>(raw);
+  if (!d || !d.riassunto) throw new Error("L'AI non ha risposto nel formato atteso.");
+  const capitoli = (Array.isArray(d.capitoli) ? d.capitoli : [])
+    .map((c: any) => ({ t: Math.max(0, Math.round(Number(c.t) || 0)), titolo: String(c.titolo || '') }))
+    .filter((c) => c.titolo)
+    .sort((a, b) => a.t - b.t);
+  return { riassunto: String(d.riassunto), capitoli };
+}
+
+export async function findMoment(opts: {
+  video: VideoItem; provider: AiProvider; settings: AppSettings; domanda: string; fetchFn?: typeof fetch;
+}): Promise<{ t: number; spiegazione: string } | null> {
+  const { video, provider, settings, domanda, fetchFn } = opts;
+  const txt = await transcriptText(video, settings, fetchFn);
+  const system = `Hai la trascrizione di un video a blocchi con l'orario [mm:ss]. Trova il punto in cui si parla di ciò che chiede l'utente. Scrivi in italiano.
+Rispondi ESCLUSIVAMENTE con JSON: {"t": secondi_di_inizio, "spiegazione": "una frase su che cosa si dice lì"} oppure {"t": null, "spiegazione": "non se ne parla"} se l'argomento non c'è.`;
+  const raw = await askBridge({
+    bridgeUrl: settings.bridgeUrl, token: settings.bridgeToken, provider, system, fetchFn,
+    prompt: `Cerco: ${domanda}\n\nTRASCRIZIONE:\n${txt}`,
+  });
+  const d = extractAndParseJson<{ t: number | null; spiegazione: string }>(raw);
+  if (d == null || d.t == null || isNaN(Number(d.t))) return null;
+  return { t: Math.max(0, Math.round(Number(d.t))), spiegazione: String(d.spiegazione || '') };
 }

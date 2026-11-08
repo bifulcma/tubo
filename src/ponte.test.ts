@@ -136,3 +136,26 @@ describe('ponte.ts', () => {
     ).rejects.toThrow('Indirizzo del ponte AI non configurato.');
   });
 });
+
+describe('trascrizione', () => {
+  it('raggruppa a blocchi di 30 secondi con orario', async () => {
+    const { transcriptToText } = await import('./ponte');
+    const t = transcriptToText([{ t: 0, s: 'uno' }, { t: 10, s: 'due' }, { t: 31, s: 'tre' }, { t: 3700, s: 'quattro' }]);
+    expect(t).toBe('[0:00] uno due tre\n[1:01:40] quattro');
+  });
+
+  it('chiama GET /trascrizione con il token e restituisce i pezzi', async () => {
+    const { fetchTranscript } = await import('./ponte');
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true, segmenti: [{ t: 1, s: 'ciao' }] }) });
+    const segs = await fetchTranscript({ bridgeUrl: 'https://ponte.esempio.ts.net:8443/', token: ' x ', videoId: 'abc12345678', fetchFn: fetchFn as any });
+    expect(segs).toEqual([{ t: 1, s: 'ciao' }]);
+    expect(fetchFn.mock.calls[0][0]).toBe('https://ponte.esempio.ts.net:8443/trascrizione?v=abc12345678');
+    expect(fetchFn.mock.calls[0][1].headers.Authorization).toBe('Bearer x');
+  });
+
+  it('spiega quando il video non ha sottotitoli', async () => {
+    const { fetchTranscript } = await import('./ponte');
+    const fetchFn = vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({ error: 'Questo video non ha sottotitoli.' }) });
+    await expect(fetchTranscript({ bridgeUrl: 'https://p', token: 'x', videoId: 'abc12345678', fetchFn: fetchFn as any })).rejects.toThrow('sottotitoli');
+  });
+});

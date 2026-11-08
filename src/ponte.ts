@@ -220,3 +220,49 @@ export async function askBridge(options: AskBridgeOptions): Promise<string> {
 
   return parseBridgeSseStream(response.body, onChunk);
 }
+
+
+// --- Trascrizione di un video YouTube dal ponte (GET /trascrizione?v=ID) ---
+export interface TranscriptSegment { t: number; s: string }
+
+export async function fetchTranscript(opts: {
+  bridgeUrl: string;
+  token: string;
+  videoId: string;
+  signal?: AbortSignal;
+  fetchFn?: typeof fetch;
+}): Promise<TranscriptSegment[]> {
+  const { bridgeUrl, token, videoId, signal, fetchFn = fetch } = opts;
+  const res = await fetchFn(`${normalizeBridgeUrl(bridgeUrl)}/trascrizione?v=${encodeURIComponent(videoId)}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token.trim()}` },
+    signal,
+  });
+  let data: any = {};
+  try { data = await res.json(); } catch { /* niente */ }
+  if (!res.ok) {
+    if (res.status === 404 && data?.error) throw new Error(data.error);
+    if (res.status === 404) throw new Error('Il ponte non conosce ancora le trascrizioni (aggiornalo).');
+    throw new Error(data?.error || `Errore del ponte (${res.status})`);
+  }
+  return Array.isArray(data.segmenti) ? data.segmenti : [];
+}
+
+/** «[12:34] testo…» a blocchi di circa 30 secondi, tagliato a maxChars. */
+export function transcriptToText(segs: TranscriptSegment[], maxChars = 120000): string {
+  const mmss = (t: number) => {
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = Math.floor(t % 60);
+    return (h ? `${h}:${String(m).padStart(2, '0')}` : `${m}`) + `:${String(sec).padStart(2, '0')}`;
+  };
+  const righe: string[] = [];
+  let inizio = -1, buf: string[] = [];
+  for (const seg of segs) {
+    if (inizio < 0) inizio = seg.t;
+    buf.push(seg.s.replace(/\s+/g, ' ').trim());
+    if (seg.t - inizio >= 30) { righe.push(`[${mmss(inizio)}] ${buf.join(' ')}`); inizio = -1; buf = []; }
+  }
+  if (buf.length) righe.push(`[${mmss(inizio)}] ${buf.join(' ')}`);
+  let out = righe.join('\n');
+  if (out.length > maxChars) out = out.slice(0, maxChars) + '\n[… trascrizione tagliata …]';
+  return out;
+}
