@@ -85,6 +85,12 @@ export const WatchView: React.FC<WatchViewProps> = ({
         <div className="lg:col-span-8 space-y-5">
           {/* Official Embedded Video Player */}
           <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-2xl border border-slate-800 light:border-slate-300">
+            {video.id.startsWith('demo-') || video.id.includes('CLICKBAIT') ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center p-6 text-slate-300">
+                <p className="text-base font-semibold">Video dimostrativo</p>
+                <p className="text-sm text-slate-400">Questo video è inventato. Inserisci chiave YouTube e ponte nelle Impostazioni per guardare video veri.</p>
+              </div>
+            ) : (
             <iframe
               src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&rel=0`}
               title={video.title}
@@ -92,6 +98,7 @@ export const WatchView: React.FC<WatchViewProps> = ({
               allowFullScreen
               className="w-full h-full border-0"
             />
+            )}
           </div>
 
           {/* Video Title */}

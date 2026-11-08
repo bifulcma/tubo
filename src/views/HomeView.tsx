@@ -10,6 +10,8 @@ interface HomeViewProps {
   onTriggerSearch: (query: string) => void;
   savedVideoIds: Set<string>;
   onToggleWatchLater: (video: VideoItem) => void;
+  demo: boolean;
+  recentVideos: VideoItem[];
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -18,6 +20,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onTriggerSearch,
   savedVideoIds,
   onToggleWatchLater,
+  demo,
+  recentVideos,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Tutti');
 
@@ -40,7 +44,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   ];
 
   // Filtra video da mostrare in homepage (nascondendo i clickbait finti dalla home)
-  const homeVideos = DEMO_VIDEOS.filter((v) => {
+  const homeVideos = !demo ? recentVideos : DEMO_VIDEOS.filter((v) => {
     if (v.id.includes('CLICKBAIT')) return false;
     if (selectedCategory === 'Tutti') return true;
     return v.category === selectedCategory;
@@ -92,8 +96,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* Category Filter Pills */}
-      <section className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      {/* Category Filter Pills (solo nei dati dimostrativi) */}
+      {demo && <section className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         <span className="text-xs font-semibold text-slate-400 light:text-slate-500 flex items-center gap-1 shrink-0 mr-1">
           <Flame className="w-4 h-4 text-amber-400" />
           Filtra per tema:
@@ -111,13 +115,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {cat}
           </button>
         ))}
-      </section>
+      </section>}
 
       {/* Featured Video Grid */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg sm:text-xl font-bold text-white light:text-slate-900 flex items-center gap-2">
-            <span>Tendenze & Video Consigliati</span>
+            <span>{demo ? 'Tendenze & Video Consigliati (dimostrazione)' : 'Visti di recente'}</span>
             <span className="text-xs font-normal text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 light:bg-slate-100 light:border-slate-200">
               {homeVideos.length} video
             </span>
@@ -130,7 +134,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           onSelectChannel={onSelectChannel}
           savedVideoIds={savedVideoIds}
           onToggleWatchLater={onToggleWatchLater}
-          emptyMessage="Nessun video trovato in questa categoria."
+          emptyMessage={demo ? "Nessun video trovato in questa categoria." : "Fai una ricerca: i video che guardi compariranno qui."}
           showAiReason={true}
         />
       </section>

@@ -8,7 +8,7 @@ export interface DemoVideoItem extends VideoItem {
 
 export const DEMO_VIDEOS: DemoVideoItem[] = [
   {
-    id: 'dQw4w9WgXcQ', // ID di fallback embeddabile
+    id: 'demo-1',
     title: 'Carl Schmitt: Il concetto di Katechon e la Teologia Politica II',
     channelTitle: 'Archivio Filosofico Italiano',
     channelId: 'UC_arch_filo',
@@ -30,7 +30,7 @@ export const DEMO_VIDEOS: DemoVideoItem[] = [
     }),
   },
   {
-    id: 'lG4VkPoG3ko',
+    id: 'demo-2',
     title: 'Carl Schmitt: Der Begriff des Politischen und der Katechon',
     channelTitle: 'Institut für Philosophie & Rechtsgeschichte',
     channelId: 'UC_inst_rechts',
@@ -52,7 +52,7 @@ export const DEMO_VIDEOS: DemoVideoItem[] = [
     }),
   },
   {
-    id: '9bZkp7q19f0',
+    id: 'demo-3',
     title: 'Sovranità e Stato di Eccezione: Dal Nomos ad Agamben',
     channelTitle: 'Cattedra di Teoria Politica',
     channelId: 'UC_cattedra_pol',
@@ -96,7 +96,7 @@ export const DEMO_VIDEOS: DemoVideoItem[] = [
     }),
   },
   {
-    id: '3JZ_D3ELwOQ',
+    id: 'demo-4',
     title: 'Meccanica Quantistica: Paradosso EPR, Teorema di Bell e Non-Località',
     channelTitle: 'Fisica Teorica Avanzata',
     channelId: 'UC_fisica_teorica',
@@ -118,7 +118,7 @@ export const DEMO_VIDEOS: DemoVideoItem[] = [
     }),
   },
   {
-    id: 'fJ9rUzIMcZQ',
+    id: 'demo-5',
     title: 'Architettura dei Large Language Models: Attention Mechanism & FlashAttention',
     channelTitle: 'Deep Learning Systems Lab',
     channelId: 'UC_dl_lab',
@@ -140,7 +140,7 @@ export const DEMO_VIDEOS: DemoVideoItem[] = [
     }),
   },
   {
-    id: 'V-_O7nl0Ii0',
+    id: 'demo-6',
     title: 'J.S. Bach: Die Kunst der Fuge — Analisi Contrappuntistica delle Fughe a 4 voci',
     channelTitle: 'Polifonia & Analisi Musicale',
     channelId: 'UC_polifonia',
@@ -162,7 +162,7 @@ export const DEMO_VIDEOS: DemoVideoItem[] = [
     }),
   },
   {
-    id: 'OPf0YbXqDm0',
+    id: 'demo-7',
     title: 'Design Industriale Italiano: La Lezione di Ettore Sottsass e Achille Castiglioni',
     channelTitle: 'Archivio del Progetto',
     channelId: 'UC_arch_progetto',

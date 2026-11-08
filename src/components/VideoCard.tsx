@@ -114,7 +114,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           </h3>
 
           {/* Channel and statistics */}
-          <div className="mt-2 flex items-center gap-2 text-xs text-slate-400 light:text-slate-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400 light:text-slate-500">
             {/* Channel Avatar icon */}
             <div
               onClick={() => onSelectChannel?.(video.channelId, video.channelTitle)}
@@ -124,7 +124,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             </div>
             <span
               onClick={() => onSelectChannel?.(video.channelId, video.channelTitle)}
-              className="font-medium truncate hover:text-indigo-300 light:hover:text-indigo-700 cursor-pointer transition"
+              className="font-medium truncate max-w-full min-w-[4rem] hover:text-indigo-300 light:hover:text-indigo-700 cursor-pointer transition"
             >
               {video.channelTitle}
             </span>

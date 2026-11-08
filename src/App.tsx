@@ -156,8 +156,9 @@ export default function App() {
     if (searchResults.length > 1) {
       return searchResults;
     }
+    if (!isDemoMode(settings)) return history.map((h) => h.video);
     return DEMO_VIDEOS.filter((v) => !v.id.includes('CLICKBAIT'));
-  }, [searchResults]);
+  }, [searchResults, settings, history]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 light:bg-slate-50 light:text-slate-900 transition-colors">
@@ -188,6 +189,8 @@ export default function App() {
             onTriggerSearch={handleTriggerSearch}
             savedVideoIds={savedVideoIds}
             onToggleWatchLater={handleToggleWatchLater}
+            demo={showDemoBanner}
+            recentVideos={history.map((h) => h.video).slice(0, 12)}
           />
         )}
 
