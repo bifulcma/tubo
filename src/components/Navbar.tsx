@@ -24,6 +24,7 @@ interface NavbarProps {
   watchLaterCount: number;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
+  onOpenMobileSearch?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -36,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   watchLaterCount,
   theme,
   onToggleTheme,
+  onOpenMobileSearch,
 }) => {
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const [isAiDropdownOpen, setIsAiDropdownOpen] = useState(false);
@@ -95,7 +97,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           onSubmit={handleSubmit}
           className="flex-1 max-w-2xl flex items-center relative"
         >
-          <div className="w-full flex items-center rounded-xl border border-slate-800 bg-slate-900/90 focus-within:border-indigo-500/80 focus-within:ring-2 focus-within:ring-indigo-500/20 transition shadow-inner light:bg-slate-100/90 light:border-slate-300">
+          <div
+            onClick={() => {
+              if (window.innerWidth < 640 && onOpenMobileSearch) {
+                onOpenMobileSearch();
+              }
+            }}
+            className="w-full flex items-center rounded-xl border border-slate-800 bg-slate-900/90 focus-within:border-indigo-500/80 focus-within:ring-2 focus-within:ring-indigo-500/20 transition shadow-inner light:bg-slate-100/90 light:border-slate-300 cursor-pointer sm:cursor-text"
+          >
             {/* Search Input */}
             <div className="relative flex-1 flex items-center">
               <Search className="w-4 h-4 ml-3.5 text-slate-400 pointer-events-none" />
@@ -103,8 +112,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="text"
                 value={localQuery}
                 onChange={(e) => setLocalQuery(e.target.value)}
+                onFocus={() => {
+                  if (window.innerWidth < 640 && onOpenMobileSearch) {
+                    onOpenMobileSearch();
+                  }
+                }}
                 placeholder="Cosa vuoi guardare? Es: lezioni serie su Carl Schmitt..."
-                className="w-full py-2.5 pl-3 pr-2 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-500 light:text-slate-900 light:placeholder:text-slate-400"
+                className="w-full py-2.5 pl-3 pr-2 text-base sm:text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-500 light:text-slate-900 light:placeholder:text-slate-400"
               />
             </div>
 

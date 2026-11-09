@@ -27,6 +27,7 @@ import { DEMO_VIDEOS } from './demo/mockVideos';
 
 import { Navbar } from './components/Navbar';
 import { MobileNav } from './components/MobileNav';
+import { MobileSearchModal } from './components/MobileSearchModal';
 import { DemoBanner } from './components/DemoBanner';
 
 import { HomeView } from './views/HomeView';
@@ -51,6 +52,7 @@ export default function App() {
   const [watchLater, setWatchLater] = useState<VideoItem[]>(() => loadWatchLater());
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
 
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState<SearchStatus>({
     step: 'idle',
@@ -206,6 +208,19 @@ export default function App() {
         watchLaterCount={watchLater.length}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        onOpenMobileSearch={() => setIsMobileSearchOpen(true)}
+      />
+
+      {/* Mobile Search Modal (pensato appositamente per iPhone/mobile) */}
+      <MobileSearchModal
+        isOpen={isMobileSearchOpen}
+        onClose={() => setIsMobileSearchOpen(false)}
+        onSearch={handleTriggerSearch}
+        selectedAi={selectedAi}
+        onSelectAi={handleSelectAi}
+        savedSearches={savedSearches}
+        onOpenSavedSearch={handleOpenSavedSearch}
+        initialQuery={searchQuery}
       />
 
       {/* Main Content Area */}
@@ -222,6 +237,7 @@ export default function App() {
             savedSearches={savedSearches}
             onOpenSavedSearch={handleOpenSavedSearch}
             onRemoveSavedSearch={handleRemoveSavedSearch}
+            onOpenSearch={() => setIsMobileSearchOpen(true)}
           />
         )}
 
@@ -311,6 +327,7 @@ export default function App() {
       <MobileNav
         activePage={activePage}
         onNavigate={(page) => setActivePage(page)}
+        onOpenSearch={() => setIsMobileSearchOpen(true)}
         watchLaterCount={watchLater.length}
       />
     </div>

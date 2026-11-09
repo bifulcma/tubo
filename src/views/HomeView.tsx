@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Compass, Flame, History, X } from 'lucide-react';
+import { Sparkles, Compass, Flame, History, X, Search } from 'lucide-react';
 import { VideoItem, SavedSearch, AI_PROVIDERS } from '../types';
 import { VideoGrid } from '../components/VideoGrid';
 import { DEMO_VIDEOS } from '../demo/mockVideos';
@@ -15,6 +15,7 @@ interface HomeViewProps {
   savedSearches: SavedSearch[];
   onOpenSavedSearch: (s: SavedSearch) => void;
   onRemoveSavedSearch: (s: SavedSearch) => void;
+  onOpenSearch?: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -28,6 +29,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   savedSearches,
   onOpenSavedSearch,
   onRemoveSavedSearch,
+  onOpenSearch,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Tutti');
 
@@ -91,6 +93,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <p className="mt-3 text-sm sm:text-base text-slate-300 light:text-slate-600 leading-relaxed">
             Descrivi quello che vuoi imparare o guardare. L'AI pianifica ricerche mirate, consulta YouTube e valuta ogni video con un punteggio e una motivazione trasparente.
           </p>
+
+          {/* Pulsante rapido di ricerca per smartphone */}
+          {onOpenSearch && (
+            <div className="mt-4 sm:hidden">
+              <button
+                type="button"
+                onClick={onOpenSearch}
+                className="w-full py-3.5 px-4 rounded-2xl bg-indigo-600/90 hover:bg-indigo-600 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 active:scale-95 transition cursor-pointer"
+              >
+                <Search className="w-4 h-4" />
+                <span>Cerca un video con l'AI</span>
+              </button>
+            </div>
+          )}
 
           {/* Quick inspiration tags */}
           <div className="mt-6">
