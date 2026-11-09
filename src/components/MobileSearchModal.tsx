@@ -233,7 +233,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
             <Bot className="w-3.5 h-3.5 text-indigo-400" />
             Scegli il modello AI:
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {(Object.keys(AI_PROVIDERS) as AiProvider[]).map((provKey) => {
               const prov = AI_PROVIDERS[provKey];
               const isSelected = selectedAi === provKey;
@@ -242,21 +242,21 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                   key={provKey}
                   type="button"
                   onClick={() => onSelectAi(provKey)}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer active:scale-95 ${
+                  className={`p-2 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer active:scale-95 ${
                     isSelected
                       ? 'border-indigo-500 bg-indigo-950/50 light:bg-indigo-50/80 shadow-md ring-1 ring-indigo-500'
                       : 'border-slate-800 bg-slate-900/60 light:border-slate-200 light:bg-slate-100 hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="font-semibold text-xs text-white light:text-slate-900">
-                      {prov.name}
+                    <span className="font-semibold text-[11px] truncate text-white light:text-slate-900">
+                      {prov.name.split(' ')[0]}
                     </span>
                     {isSelected ? (
-                      <Check className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600 shrink-0" />
+                      <Check className="w-3 h-3 text-indigo-400 light:text-indigo-600 shrink-0" />
                     ) : (
                       <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                        className={`text-[8px] px-1 py-0.2 rounded-full font-bold uppercase ${
                           prov.isLocal
                             ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 light:bg-emerald-100 light:text-emerald-800'
                             : 'bg-sky-950/60 text-sky-400 border border-sky-800/40 light:bg-sky-100 light:text-sky-800'
@@ -266,8 +266,8 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 light:text-slate-500 mt-1 line-clamp-1">
-                    {prov.description}
+                  <span className="text-[9px] text-slate-400 light:text-slate-500 mt-1 line-clamp-1">
+                    {prov.name}
                   </span>
                 </button>
               );

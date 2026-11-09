@@ -1,4 +1,4 @@
-export type AiProvider = 'qwen' | 'gemma' | 'claude' | 'argon';
+export type AiProvider = 'nemotron' | 'claude' | 'argon';
 
 export interface AiProviderConfig {
   id: AiProvider;
@@ -9,17 +9,10 @@ export interface AiProviderConfig {
 }
 
 export const AI_PROVIDERS: Record<AiProvider, AiProviderConfig> = {
-  qwen: {
-    id: 'qwen',
-    name: 'Qwen (locale)',
-    description: 'Modello locale open-weights, veloce ed efficiente',
-    isLocal: true,
-    badge: 'Locale',
-  },
-  gemma: {
-    id: 'gemma',
-    name: 'Gemma (locale)',
-    description: 'Modello open di Google in esecuzione locale',
+  nemotron: {
+    id: 'nemotron',
+    name: 'Nemotron (locale)',
+    description: 'NVIDIA Nemotron 3.5 Super locale via Ollama, zero gettoni',
     isLocal: true,
     badge: 'Locale',
   },

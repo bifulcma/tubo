@@ -24,16 +24,16 @@ describe('reviewVideo', () => {
       ok: true, status: 200,
       body: sse('Ecco: {"riassunto": "Parla del katechon.", "commento": "Voto alto perché rigorosa."}'),
     });
-    const r = await reviewVideo({ video, provider: 'gemma', settings, fetchFn: fetchFn as any });
+    const r = await reviewVideo({ video, provider: 'nemotron', settings, fetchFn: fetchFn as any });
     expect(r.riassunto).toBe('Parla del katechon.');
     expect(r.commento).toContain('rigorosa');
     const body = JSON.parse(fetchFn.mock.calls[0][1].body);
-    expect(body.provider).toBe('gemma');
+    expect(body.provider).toBe('nemotron');
     expect(body.messages[0].content).toContain('Schmitt katechon');
   });
 
   it('segnala una risposta senza JSON', async () => {
     const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200, body: sse('non so') });
-    await expect(reviewVideo({ video, provider: 'qwen', settings, fetchFn: fetchFn as any })).rejects.toThrow('formato atteso');
+    await expect(reviewVideo({ video, provider: 'nemotron', settings, fetchFn: fetchFn as any })).rejects.toThrow('formato atteso');
   });
 });

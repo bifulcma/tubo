@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   youtubeApiKey: '',
   bridgeUrl: DEFAULT_BRIDGE_URL,
   bridgeToken: '',
-  defaultProvider: 'qwen',
+  defaultProvider: 'nemotron',
   demoMode: false,
   theme: 'dark',
   aiLanguage: 'it',
@@ -73,9 +73,13 @@ export function loadSettings(): AppSettings {
     const raw = getStorageItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
+    const def = (parsed.defaultProvider === 'qwen' || parsed.defaultProvider === 'gemma')
+      ? 'nemotron'
+      : (parsed.defaultProvider || 'nemotron');
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      defaultProvider: def,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -95,11 +99,14 @@ export function saveSettings(settings: Partial<AppSettings>): AppSettings {
 
 // --- AI PREFERITA / ATTIVA ---
 
-export function loadSelectedAi(fallback: AiProvider = 'qwen'): AiProvider {
+export function loadSelectedAi(fallback: AiProvider = 'nemotron'): AiProvider {
   try {
-    const stored = getStorageItem(SELECTED_AI_KEY) as AiProvider | null;
-    if (stored && ['qwen', 'gemma', 'claude', 'argon'].includes(stored)) {
-      return stored;
+    const stored = getStorageItem(SELECTED_AI_KEY) as string | null;
+    if (stored === 'qwen' || stored === 'gemma') {
+      return 'nemotron';
+    }
+    if (stored && ['nemotron', 'claude', 'argon'].includes(stored)) {
+      return stored as AiProvider;
     }
   } catch {
     // fallback

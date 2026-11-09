@@ -182,7 +182,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </h3>
           </div>
           <p className="text-xs text-slate-400 light:text-slate-500 leading-relaxed">
-            Indirizzo dell'endpoint e token Bearer per parlare con i modelli (Qwen, Gemma, Claude, Argon).
+            Indirizzo dell'endpoint e token Bearer per parlare con i modelli (Nemotron, Claude, Argon).
           </p>
 
           <div className="space-y-3">

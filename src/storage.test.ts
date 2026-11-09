@@ -34,7 +34,7 @@ describe('storage.ts', () => {
   beforeEach(() => {
     clearHistory();
     saveSettings(DEFAULT_SETTINGS);
-    saveSelectedAi('qwen');
+    saveSelectedAi('nemotron');
     // Rimuovi video da watch later
     const wl = loadWatchLater();
     for (const item of wl) {
@@ -44,7 +44,7 @@ describe('storage.ts', () => {
 
   it('carica le impostazioni predefinite', () => {
     const s = loadSettings();
-    expect(s.defaultProvider).toBe('qwen');
+    expect(s.defaultProvider).toBe('nemotron');
     expect(s.bridgeUrl).toBe(DEFAULT_SETTINGS.bridgeUrl);
   });
 
@@ -97,12 +97,12 @@ describe('storage.ts', () => {
 describe('ultime ricerche', () => {
   it('salva, toglie i doppioni e rimuove', async () => {
     const { saveSearch, loadSavedSearches, removeSavedSearch } = await import('./storage');
-    const base = { provider: 'gemma' as const, at: 1, status: { step: 'done' as const, message: 'ok' }, results: [] };
+    const base = { provider: 'nemotron' as const, at: 1, status: { step: 'done' as const, message: 'ok' }, results: [] };
     saveSearch({ ...base, query: 'Schmitt' });
     saveSearch({ ...base, query: 'Bach' });
     saveSearch({ ...base, query: 'schmitt ', at: 2 });
     const list = loadSavedSearches();
     expect(list.map((e) => e.query)).toEqual(['schmitt ', 'Bach']);
-    expect(removeSavedSearch('Bach', 'gemma').map((e) => e.query)).toEqual(['schmitt ']);
+    expect(removeSavedSearch('Bach', 'nemotron').map((e) => e.query)).toEqual(['schmitt ']);
   });
 });

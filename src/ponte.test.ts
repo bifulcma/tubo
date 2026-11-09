@@ -81,7 +81,7 @@ describe('ponte.ts', () => {
     const response = await askBridge({
       bridgeUrl: 'https://ponte.esempio.ts.net:8443',
       token: 'segreto123',
-      provider: 'qwen',
+      provider: 'nemotron',
       system: 'Sei un assistente per la ricerca video',
       prompt: 'Carl Schmitt katechon',
       fetchFn: mockFetch as unknown as typeof fetch,
@@ -98,7 +98,7 @@ describe('ponte.ts', () => {
 
     const body = JSON.parse(init.body);
     expect(body).toEqual({
-      provider: 'qwen',
+      provider: 'nemotron',
       model: '',
       system: 'Sei un assistente per la ricerca video',
       messages: [{ role: 'user', content: 'Carl Schmitt katechon' }],

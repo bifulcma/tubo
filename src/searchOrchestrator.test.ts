@@ -33,7 +33,7 @@ describe('searchOrchestrator.ts', () => {
         youtubeApiKey: 'key',
         bridgeUrl: 'url',
         bridgeToken: 'token',
-        defaultProvider: 'qwen',
+        defaultProvider: 'nemotron',
         demoMode: true,
         theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
@@ -45,7 +45,7 @@ describe('searchOrchestrator.ts', () => {
         youtubeApiKey: '',
         bridgeUrl: 'https://test',
         bridgeToken: '',
-        defaultProvider: 'qwen',
+        defaultProvider: 'nemotron',
         demoMode: false,
         theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
@@ -57,7 +57,7 @@ describe('searchOrchestrator.ts', () => {
         youtubeApiKey: 'AIzaSy12345',
         bridgeUrl: 'https://test',
         bridgeToken: 'mytoken',
-        defaultProvider: 'qwen',
+        defaultProvider: 'nemotron',
         demoMode: false,
         theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
@@ -72,14 +72,14 @@ describe('searchOrchestrator.ts', () => {
         youtubeApiKey: '',
         bridgeUrl: '',
         bridgeToken: '',
-        defaultProvider: 'qwen',
+        defaultProvider: 'nemotron',
         demoMode: true,
         theme: 'dark', aiLanguage: 'it', videoLanguages: [],
       };
 
       const videos = await executeAiSearch({
         query: 'lezioni serie su Carl Schmitt e il katechon, non divulgative, in italiano o tedesco',
-        provider: 'qwen',
+        provider: 'nemotron',
         settings,
         onStatusUpdate: (st) => statuses.push(st),
       });
@@ -126,7 +126,7 @@ describe('lingua', () => {
     const body = new ReadableStream<Uint8Array>({ start(c) { c.enqueue(enc.encode('event: text\ndata: {"t": "{\\"riassunto\\": \\"a\\", \\"commento\\": \\"b\\"}"}\n\nevent: done\ndata: {}\n\n')); c.close(); } });
     const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200, body });
     const video: any = { id: 'abc12345678', title: 't', channelTitle: 'c', description: '', duration: '1:00', aiScore: 5 };
-    await reviewVideo({ video, provider: 'gemma', settings: { youtubeApiKey: 'k', bridgeUrl: 'https://p', bridgeToken: 'x', defaultProvider: 'qwen', demoMode: false, theme: 'dark', aiLanguage: 'de', videoLanguages: [] }, fetchFn: fetchFn as any });
+    await reviewVideo({ video, provider: 'nemotron', settings: { youtubeApiKey: 'k', bridgeUrl: 'https://p', bridgeToken: 'x', defaultProvider: 'nemotron', demoMode: false, theme: 'dark', aiLanguage: 'de', videoLanguages: [] }, fetchFn: fetchFn as any });
     expect(JSON.parse(fetchFn.mock.calls[0][1].body).system).toContain('Scrivi in tedesco');
   });
 });
