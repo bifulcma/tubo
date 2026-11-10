@@ -327,7 +327,7 @@ export const WatchView: React.FC<WatchViewProps> = ({
                         <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300 light:text-indigo-600 mb-1">Perché questo voto</h4>
                         <p className="text-slate-200 light:text-slate-700">{review.commento}</p>
                       </div>
-                      <p className="text-[11px] text-slate-500">Dal titolo e dalla descrizione del video: l'AI non lo ha guardato.</p>
+                      <p className="text-[11px] text-slate-400">Dal titolo e dalla descrizione del video: l'AI non lo ha guardato.</p>
                     </>
                   )}
                 </div>
@@ -464,13 +464,13 @@ export const WatchView: React.FC<WatchViewProps> = ({
               <Sparkles className="w-4 h-4 text-indigo-400" />
               <span>Video suggeriti</span>
             </h3>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-400">
               Dalla stessa ricerca
             </span>
           </div>
 
           {otherSuggested.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4">Nessun altro video suggerito al momento.</p>
+            <p className="text-xs text-slate-400 py-4">Nessun altro video suggerito al momento.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {otherSuggested.map((item) => (
@@ -509,7 +509,7 @@ export const WatchView: React.FC<WatchViewProps> = ({
                         {item.channelTitle}
                       </p>
                     </div>
-                    <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
                       <span>{formatViews(item.viewCount)}</span>
                     </div>
                   </div>

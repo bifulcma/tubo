@@ -51,7 +51,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
               <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400 light:text-indigo-600">
                 Risultati Ricerca AI
               </span>
-              <span className="text-xs text-slate-500">•</span>
+              <span className="text-xs text-slate-400">•</span>
               <span className="text-xs font-medium text-slate-400">
                 Curata da {currentProvider.name}
               </span>

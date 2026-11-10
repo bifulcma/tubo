@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   RotateCcw,
 } from 'lucide-react';
-import { AiProvider, AI_PROVIDERS, AppSettings, LINGUE } from '../types';
+import { AiProvider, AI_PROVIDERS, AppSettings, LINGUE, nomeCompletoAi } from '../types';
 import { DEFAULT_BRIDGE_URL } from '../storage';
 import { askBridge } from '../ponte';
 
@@ -284,7 +284,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-white light:text-slate-900">
-                        {prov.name}
+                        {nomeCompletoAi(prov)}
                       </span>
                       <span
                         className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${
@@ -378,7 +378,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <AlertTriangle className="w-4 h-4 text-amber-400" />
           Gestione dati locali
         </h3>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           Puoi azzerare la cronologia dei video visti o l'elenco di «Guarda più tardi» in qualsiasi momento.
         </p>
 

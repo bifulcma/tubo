@@ -172,7 +172,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cosa vuoi guardare o imparare?"
-              className="w-full py-3.5 pl-3 pr-2 text-base bg-transparent border-0 focus:outline-none focus:ring-0 text-white placeholder:text-slate-500 light:text-slate-900 light:placeholder:text-slate-400"
+              className="w-full py-3.5 pl-3 pr-2 text-base bg-transparent border-0 focus:outline-none focus:ring-0 text-white placeholder:text-slate-400 light:text-slate-900 light:placeholder:text-slate-400"
             />
 
             {/* Tasto Cancella testo */}
@@ -249,8 +249,8 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="font-semibold text-[11px] truncate text-white light:text-slate-900">
-                      {prov.name.split(' ')[0]}
+                    <span className="font-semibold text-xs text-white light:text-slate-900">
+                      {prov.name}
                     </span>
                     {isSelected ? (
                       <Check className="w-3 h-3 text-indigo-400 light:text-indigo-600 shrink-0" />
@@ -266,8 +266,8 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-[9px] text-slate-400 light:text-slate-500 mt-1 line-clamp-1">
-                    {prov.name}
+                  <span className="text-[10px] leading-tight text-slate-300 light:text-slate-600 mt-1">
+                    {prov.shortDescription}
                   </span>
                 </button>
               );
@@ -294,14 +294,14 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                   className="w-full text-left p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 light:bg-slate-100 light:border-slate-200 flex items-center justify-between gap-3 active:scale-[0.99] transition cursor-pointer"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-200 light:text-slate-800 line-clamp-1">
+                    <p className="text-xs font-medium text-slate-200 light:text-slate-800 line-clamp-2">
                       {s.query}
                     </p>
-                    <p className="text-[10px] text-slate-500 light:text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-slate-400 light:text-slate-400 mt-0.5">
                       {AI_PROVIDERS[s.provider]?.name || s.provider} · {quando(s.at)} · {s.results.length} video
                     </p>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </button>
               ))}
             </div>
@@ -322,7 +322,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                 onClick={() => handleSelectQuick(item)}
                 className="w-full text-left p-2.5 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:bg-slate-800/60 light:bg-slate-50 light:border-slate-200 light:hover:bg-slate-100 text-xs text-slate-300 light:text-slate-700 flex items-center justify-between gap-2 active:scale-[0.99] transition cursor-pointer"
               >
-                <span className="line-clamp-1">«{item}»</span>
+                <span className="line-clamp-2">«{item}»</span>
                 <ArrowRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               </button>
             ))}

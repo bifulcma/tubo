@@ -7,17 +7,56 @@
 ## Caratteristiche Principali
 
 - 🧠 **Ricerca in linguaggio naturale con AI**: Descrivi liberamente ciò che desideri apprendere o guardare (es. *«lezioni serie su Carl Schmitt e il katechon, non divulgative, in italiano o tedesco»*).
-- 🤖 **4 Provider AI selezionabili**:
-  - **Qwen (locale)**: modello open-weights locale, veloce e privato (`qwen`).
-  - **Gemma (locale)**: modello compatto di Google in locale (`gemma`).
-  - **Claude**: Anthropic Claude per analisi testuale e critica (`claude`).
-  - **Argon (Gemini Flash)**: Google Gemini 2.0 Flash (`argon`).
+- 🤖 **3 AI selezionabili** (nel selettore si vede nome e mini-descrizione):
+  - **Nemotron 3.5 — locale sul Mac Studio** (`nemotron`): privato, nessun costo.
+  - **Claude — Anthropic, nel cloud** (`claude`): analisi dei testi più raffinata.
+  - **Argon — Gemini Flash, nel cloud, rapido** (`argon`).
 - ⚡ **Il Flusso di Ricerca a 3 Passi**:
-  1. **Passo 1 (Pianificazione AI)**: L'AI riceve la richiesta e genera da 2 a 4 sotto-ricerche mirate, le lingue rilevanti, la durata minima e i termini da escludere.
-  2. **Passo 2 (Interrogazione YouTube)**: L'applicazione chiama la YouTube Data API v3 (`search.list` e `videos.list`) recuperando statistiche, durata ISO e dettagli.
-  3. **Passo 3 (Selezione e Punteggio AI)**: L'AI valuta l'elenco dei video, penalizza o scarta acchiappa-clic e contenuti banali, assegnando a ciascuno un punteggio da 0 a 10 e una motivazione sintetica (*il «perché» dell'AI*).
+  1. **Passo 1 (Pianificazione AI)**: l'AI prepara da 2 a 4 ricerche, ognuna **con la sua lingua** (`{"q": "...", "lingua": "de"}`; il vecchio formato a semplici testi è ancora accettato), le lingue preferite, la durata minima e i termini da escludere.
+  2. **Passo 2 (YouTube)**: ogni ricerca usa la sua lingua (`relevanceLanguage`) e, se serve, la durata (`videoDuration`: da 20 minuti in su «long», da 4 a 19 «medium»). Poi `videos.list` per i dettagli e **una sola** `channels.list` per sapere chi sono i canali (iscritti, descrizione, paese…).
+  3. **Passo 3 (Selezione AI)**: l'AI riceve titolo, descrizione (fino a 800 caratteri) e dati del canale; dà un voto da 0 a 10 con il motivo, e indica **chi parla** e la sua **autorità** sull'argomento (alta / media / bassa / sconosciuta). Sulle schede compare la riga «👤 autore · autorità: livello».
+- ⏹️ **Annulla ricerca**: durante l'avanzamento c'è il pulsante «Annulla». Una nuova ricerca annulla automaticamente quella in corso; una ricerca annullata non cambia i risultati e non mostra errori.
+- 👤 **Chi parla e con quale autorità** (pagina video, sotto la valutazione): l'AI prepara una scheda con
+  - **il canale** (persona, università, istituto, editore, divulgatore, aggregatore…; da quando esiste, iscritti, video, paese);
+  - **l'autore/relatore** (nome, ruolo, affiliazione, opere note);
+  - **la legittimazione** sull'argomento cercato, con livello e l'eventuale orientamento o parzialità dichiarata;
+  - **le fonti** come link cliccabili.
+  L'AI prova prima **cercando in rete** (`web: true` al ponte); se il ponte non può, riprova senza rete. Il badge dice se il dato è **«verificato in rete»** o **«dedotto»** (da titolo e descrizione). Regola: niente titoli o affiliazioni inventati, se non si sa scrive «non risulta». Il pulsante **«Aggiorna»** rifà l'analisi.
+- 📺 **Pagina canale**: scheda del canale con i dati di YouTube (iscritti, video, visualizzazioni, anno di nascita, paese, descrizione), il giudizio dell'AI («Chi è questo canale?») e gli **ultimi video veri** del canale (costa circa 3 unità di quota, contro le 100 di una ricerca).
 - 🎬 **Pagina Video Dedicata**: Player ufficiale incorporato (`youtube-nocookie.com/embed/ID`), titolo, canale, data, visualizzazioni, descrizione espandibile e barra laterale dei video suggeriti dalla stessa ricerca.
-- 📺 **Funzionalità Complete**: Home con tendenze, pagina Canale, lista **Guarda più tardi** e **Cronologia** visualizzazioni (con cancellazione sicura).
+- 📚 **Funzionalità Complete**: Home, lista **Guarda più tardi** e **Cronologia** visualizzazioni (con cancellazione sicura).
+
+---
+
+## Indirizzi delle pagine (Indietro e ricarica funzionano)
+
+Ogni pagina ha il suo indirizzo dopo il `#`, così il tasto **Indietro** del browser o dell'iPad torna alla pagina precedente dentro Tubo, e ricaricando si resta dove si era:
+
+| Pagina | Indirizzo |
+|---|---|
+| Home | `#/` |
+| Risultati di una ricerca | `#/cerca?q=...&ai=...` |
+| Video | `#/video/<id>` |
+| Canale | `#/canale/<id>` |
+| Cronologia | `#/cronologia` |
+| Guarda più tardi | `#/dopo` |
+| Impostazioni | `#/impostazioni` |
+
+- Ricaricando `#/video/<id>` il video si riapre dai dati salvati (cronologia, ricerche); se non c'è, Tubo lo chiede a YouTube (1 unità).
+- Ricaricando `#/cerca?q=...` si riapre la **ricerca salvata** senza far lavorare di nuovo l'AI; se su quel dispositivo non è salvata, Tubo chiede prima di rifarla.
+- Il pulsante **«Condividi»** nella pagina video copia l'indirizzo di Tubo per quel video.
+
+## Memoria sul dispositivo (cache)
+
+Per risparmiare la quota di YouTube (10.000 unità al giorno; una ricerca `search.list` costa 100) e il lavoro dell'AI, Tubo ricorda nel `localStorage`:
+
+| Cosa | Per quanto |
+|---|---|
+| Risultati di ogni ricerca YouTube (stessa ricerca + lingua + durata) | 24 ore |
+| Dati dei canali (`channels.list`) | 7 giorni |
+| «Chi parla» per video e giudizio per canale | 30 giorni (o finché premi «Aggiorna») |
+| Riassunti, commenti e capitoli dalla trascrizione | ultimi 200-300 video |
+| Ultime ricerche complete | ultime 15 |
 - 🎨 **Interfaccia Pulita e Temi**: Tema scuro moderno e tema chiaro, reattiva su Mac, iPad, tablet Android e smartphone.
 - 📱 **Progressive Web App (PWA)**: Installabile sulla schermata Home come app nativa grazie al file `manifest.json` e icone vettoriali SVG.
 - 🛡️ **Privacy & Sicurezza**: Nessuna chiave o credenziale è hardcodata; tutto è memorizzato esclusivamente nel `localStorage` del tuo browser.
@@ -42,7 +81,7 @@ Assicurati di avere **Node.js** (versione 18 o superiore) installato.
 
 1. **Installa le dipendenze**:
    ```bash
-   cd app
+   cd ~/work/tubo
    npm install
    ```
 
@@ -50,13 +89,13 @@ Assicurati di avere **Node.js** (versione 18 o superiore) installato.
    ```bash
    npm test
    ```
-   Tutti i 24 test unitari (modulo `ponte.ts`, `youtube.ts`, `searchOrchestrator.ts` e `storage.ts`) vengono eseguiti con successo.
+   Tutti i test unitari (moduli `ponte.ts`, `youtube.ts`, `searchOrchestrator.ts`, `chiParla.ts`, `router.ts` e `storage.ts`) usano solo dati finti: nessuna chiamata vera a YouTube o al ponte.
 
 3. **Compila la versione statica**:
    ```bash
    npm run build
    ```
-   Genera i file ottimizzati e pronti per la pubblicazione nella cartella `app/dist/`.
+   Genera i file ottimizzati e pronti per la pubblicazione nella cartella `dist/`.
 
 4. **Avvia l'anteprima statica**:
    ```bash
@@ -75,7 +114,7 @@ Quando desideri utilizzare Tubo con video reali di YouTube e i tuoi modelli AI:
    - **Chiave YouTube Data API v3**: generata dalla Google Cloud Console con abilitata l'API YouTube Data v3.
    - **Indirizzo del ponte**: l'indirizzo Tailscale del ponte di PDF Penna sul tuo Mac, es. `https://<nome-mac>.<tailnet>.ts.net:8443`.
    - **Token del ponte**: il token Bearer per autenticare le richieste a `/ask`.
-   - **AI predefinita**: scegli il tuo modello preferito (Qwen, Gemma, Claude o Argon).
+   - **AI predefinita**: scegli il tuo modello preferito (Nemotron 3.5, Claude o Argon).
 3. Clicca su **Salva impostazioni**.
 4. Puoi premere **Testa connessione al ponte** per verificare immediatamente la raggiungibilità del tuo Mac Studio o server locale.
 
@@ -83,20 +122,15 @@ Quando desideri utilizzare Tubo con video reali di YouTube e i tuoi modelli AI:
 
 ## Come Pubblicare Tubo su GitHub Pages (o altri hosting statici)
 
-La configurazione di Vite utilizza `base: './'` (percorsi relativi). Questo permette di pubblicare il contenuto della cartella `app/dist/` in qualsiasi sottocartella senza modifiche al codice.
+La configurazione di Vite utilizza `base: './'` (percorsi relativi). Questo permette di pubblicare il contenuto della cartella `dist/` in qualsiasi sottocartella senza modifiche al codice. Grazie agli indirizzi con `#` non serve nessuna regola speciale sul server.
 
 ### Esempio: Pubblicazione su GitHub Pages (sottocartella `/tubo/`)
 
 1. Esegui la build:
    ```bash
-   cd app
    npm run build
    ```
-2. Carica i file generati dentro `app/dist/` sul ramo `gh-pages` del tuo repository:
-   ```bash
-   git subtree push --prefix app/dist origin gh-pages
-   ```
-   Oppure configura una GitHub Action standard per pubblicare la cartella `app/dist`.
+2. Copia il contenuto di `dist/` sul ramo `gh-pages` e fai un commit «Pubblica Tubo (build dal main <sha>)», poi `git push origin gh-pages`.
 3. Il sito sarà immediatamente consultabile all'indirizzo:
    `https://<tuo-utente>.github.io/tubo/`
 

@@ -12,7 +12,7 @@ import {
   Check,
   Sparkles,
 } from 'lucide-react';
-import { AiProvider, AI_PROVIDERS } from '../types';
+import { AiProvider, AI_PROVIDERS, nomeCompletoAi } from '../types';
 
 interface NavbarProps {
   activePage: string;
@@ -66,6 +66,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const currentProvider = AI_PROVIDERS[selectedAi];
 
+  // placeholder lungo solo dove c'è spazio (niente testo tagliato su iPhone/iPad)
+  const [largo, setLargo] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1180px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 1180px)');
+    if (!mq) return;
+    const f = () => setLargo(mq.matches);
+    mq.addEventListener?.('change', f);
+    return () => mq.removeEventListener?.('change', f);
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b backdrop-blur-md transition-colors bg-slate-950/80 border-slate-800/80 light:bg-white/80 light:border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 sm:gap-4">
@@ -92,10 +102,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
+        {/* Su iPhone: un pulsante che apre la ricerca a tutto schermo (niente testo tagliato) */}
+        <button
+          type="button"
+          onClick={() => onOpenMobileSearch?.()}
+          className="sm:hidden flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900/90 text-slate-300 text-sm cursor-pointer light:bg-slate-100 light:border-slate-300 light:text-slate-600"
+        >
+          <Search className="w-4 h-4 shrink-0 text-indigo-300" />
+          <span className="truncate">{localQuery || 'Cosa cerchi?'}</span>
+        </button>
+
         {/* Central Search Bar with AI Selector */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 max-w-2xl flex items-center relative"
+          className="hidden sm:flex flex-1 max-w-2xl items-center relative"
         >
           <div
             onClick={() => {
@@ -117,8 +137,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onOpenMobileSearch();
                   }
                 }}
-                placeholder="Cosa vuoi guardare? Es: lezioni serie su Carl Schmitt..."
-                className="w-full py-2.5 pl-3 pr-2 text-base sm:text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-500 light:text-slate-900 light:placeholder:text-slate-400"
+                placeholder={largo ? 'Cosa vuoi guardare? Es. lezioni serie su Carl Schmitt' : 'Cosa vuoi guardare?'}
+                className="w-full py-2.5 pl-3 pr-2 text-base sm:text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-400 light:text-slate-900 light:placeholder:text-slate-400"
               />
             </div>
 
@@ -131,14 +151,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="Scegli il modello di intelligenza artificiale per la ricerca"
               >
                 <Bot className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600" />
-                <span className="hidden md:inline max-w-[110px] truncate">{currentProvider.name}</span>
-                <span className="md:hidden truncate">{selectedAi}</span>
+                <span className="hidden sm:inline whitespace-nowrap">{currentProvider.name}</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
               {/* AI Dropdown Menu */}
               {isAiDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 light:bg-white light:border-slate-200">
+                <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 light:bg-white light:border-slate-200">
                   <div className="px-3 py-1.5 border-b border-slate-800 light:border-slate-100">
                     <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                       <Sparkles className="w-3 h-3 text-indigo-400" />
@@ -161,8 +180,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-semibold">{prov.name}</span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-semibold">{nomeCompletoAi(prov)}</span>
                             <span
                               className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${
                                 prov.isLocal
@@ -173,7 +192,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               {prov.badge}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-400 light:text-slate-500 mt-0.5 line-clamp-1">
+                          <p className="text-[11px] text-slate-300 light:text-slate-600 mt-0.5">
                             {prov.description}
                           </p>
                         </div>
@@ -203,7 +222,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Home / Tendenze (desktop) */}
           <button
             onClick={() => onNavigate('home')}
-            className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+            className={`hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
               activePage === 'home'
                 ? 'bg-slate-800 text-white light:bg-slate-200 light:text-slate-900'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900/60 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100'

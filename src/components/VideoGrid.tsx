@@ -25,13 +25,13 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   if (videos.length === 0) {
     return (
       <div className="py-16 text-center flex flex-col items-center justify-center">
-        <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 flex items-center justify-center mb-4 light:bg-slate-100 light:border-slate-200">
+        <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center mb-4 light:bg-slate-100 light:border-slate-200">
           <Tv className="w-8 h-8" />
         </div>
         <h3 className="text-base font-bold text-slate-300 light:text-slate-700">
           {emptyMessage}
         </h3>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm">
+        <p className="text-xs text-slate-400 mt-1 max-w-sm">
           Prova a digitare una ricerca nella barra in alto per trovare nuovi contenuti analizzati dall'AI.
         </p>
       </div>

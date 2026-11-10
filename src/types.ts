@@ -4,29 +4,38 @@ export interface AiProviderConfig {
   id: AiProvider;
   name: string;
   description: string;
+  shortDescription: string;   // mini-descrizione mostrata accanto al nome
   isLocal: boolean;
   badge: string;
+}
+
+/** «Nemotron 3.5 — locale sul Mac Studio» */
+export function nomeCompletoAi(p: AiProviderConfig): string {
+  return `${p.name} — ${p.shortDescription}`;
 }
 
 export const AI_PROVIDERS: Record<AiProvider, AiProviderConfig> = {
   nemotron: {
     id: 'nemotron',
-    name: 'Nemotron (locale)',
-    description: 'NVIDIA Nemotron 3.5 Super locale via Ollama, zero gettoni',
+    name: 'Nemotron 3.5',
+    description: 'NVIDIA Nemotron 3.5 Super via Ollama: privato, nessun costo',
+    shortDescription: 'locale sul Mac Studio',
     isLocal: true,
     badge: 'Locale',
   },
   claude: {
     id: 'claude',
     name: 'Claude',
-    description: 'Anthropic Claude per analisi testuale raffinata',
+    description: 'Anthropic Claude: analisi dei testi più raffinata',
+    shortDescription: 'Anthropic, nel cloud',
     isLocal: false,
     badge: 'Cloud',
   },
   argon: {
     id: 'argon',
-    name: 'Argon (Gemini Flash)',
-    description: 'Google Gemini 3.8 Flash via Antigravity, rapido',
+    name: 'Argon',
+    description: 'Google Gemini 3.8 Flash via Antigravity',
+    shortDescription: 'Gemini Flash, nel cloud, rapido',
     isLocal: false,
     badge: 'Cloud',
   },

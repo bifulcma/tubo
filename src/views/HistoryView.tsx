@@ -84,13 +84,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       {/* History List */}
       {history.length === 0 ? (
         <div className="py-20 text-center flex flex-col items-center justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 flex items-center justify-center mb-4 light:bg-slate-100 light:border-slate-200">
+          <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center mb-4 light:bg-slate-100 light:border-slate-200">
             <Clock className="w-8 h-8" />
           </div>
           <h3 className="text-base font-bold text-slate-300 light:text-slate-700">
             La cronologia è vuota
           </h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm">
+          <p className="text-xs text-slate-400 mt-1 max-w-sm">
             I video che guardi appariranno qui automaticamente, salvati in modo sicuro solo sul tuo dispositivo.
           </p>
         </div>

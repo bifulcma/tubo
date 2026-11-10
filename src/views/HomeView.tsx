@@ -154,7 +154,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </button>
                 <button
                   onClick={() => onRemoveSavedSearch(ss)}
-                  className="p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-slate-800 cursor-pointer"
+                  className="p-1 rounded-md text-slate-400 hover:text-red-400 hover:bg-slate-800 cursor-pointer"
                   title="Togli dalle ultime ricerche"
                   aria-label="Togli dalle ultime ricerche"
                 >
