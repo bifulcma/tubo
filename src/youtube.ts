@@ -81,9 +81,10 @@ export interface YouTubeSearchParams {
 }
 
 /** Durata minima in minuti → parametro videoDuration di YouTube. */
-export function durataPerYouTube(minuti: number): 'long' | 'medium' | undefined {
+export function durataPerYouTube(minuti: number): 'long' | undefined {
+  // Tubo è pensato per video lunghi: a YouTube chiediamo solo «long» (>= 20 min).
+  // Sotto i 20 minuti nessun filtro di durata a YouTube (il filtro sui minuti dopo videos.list resta).
   if (minuti >= 20) return 'long';
-  if (minuti >= 4) return 'medium';
   return undefined;
 }
 

@@ -25,9 +25,14 @@ export function mockAiPlanSearch(prompt: string): SearchPlan {
   }
 
   // Rilevamento vincolo durata
-  let durataMinima = 0;
-  if (lower.includes('serie') || lower.includes('non divulgat') || lower.includes('accademic') || lower.includes('lunghe') || lower.includes('corso')) {
-    durataMinima = 20;
+  // Tubo è pensato per video lunghi: 20 minuti di base, salvo richiesta esplicita
+  // di video brevi (→ 0) o di una durata precisa (→ quei minuti).
+  let durataMinima = 20;
+  const minutiChiesti = lower.match(/(\d+)\s*(?:min|minuti)\b/);
+  if (minutiChiesti) {
+    durataMinima = Number(minutiChiesti[1]);
+  } else if (/\b(brev[ie]|cort[io]|short)\b|pochi minuti/.test(lower)) {
+    durataMinima = 0;
   }
 
   // Termini da escludere

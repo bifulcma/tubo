@@ -12,8 +12,8 @@
   - **Claude — Anthropic, nel cloud** (`claude`): analisi dei testi più raffinata.
   - **Argon — Gemini Flash, nel cloud, rapido** (`argon`).
 - ⚡ **Il Flusso di Ricerca a 3 Passi**:
-  1. **Passo 1 (Pianificazione AI)**: l'AI prepara da 2 a 4 ricerche, ognuna **con la sua lingua** (`{"q": "...", "lingua": "de"}`; il vecchio formato a semplici testi è ancora accettato), le lingue preferite, la durata minima e i termini da escludere.
-  2. **Passo 2 (YouTube)**: ogni ricerca usa la sua lingua (`relevanceLanguage`) e, se serve, la durata (`videoDuration`: da 20 minuti in su «long», da 4 a 19 «medium»). Poi `videos.list` per i dettagli e **una sola** `channels.list` per sapere chi sono i canali (iscritti, descrizione, paese…).
+  1. **Passo 1 (Pianificazione AI)**: l'AI prepara da 2 a 4 ricerche, ognuna **con la sua lingua** (`{"q": "...", "lingua": "de"}`; il vecchio formato a semplici testi è ancora accettato), le lingue preferite, la durata minima e i termini da escludere. **Tubo è pensato per video lunghi**: se non chiedi esplicitamente video brevi, la durata minima è 20 minuti; se chiedi video brevi o una durata precisa (es. «sotto i 10 minuti», «almeno 45 minuti»), l'AI rispetta la tua richiesta.
+  2. **Passo 2 (YouTube)**: ogni ricerca usa la sua lingua (`relevanceLanguage`) e, se serve, la durata (`videoDuration`: solo «long», da 20 minuti in su; sotto i 20 minuti nessun filtro di durata a YouTube). Poi `videos.list` per i dettagli e **una sola** `channels.list` per sapere chi sono i canali (iscritti, descrizione, paese…).
   3. **Passo 3 (Selezione AI)**: l'AI riceve titolo, descrizione (fino a 800 caratteri) e dati del canale; dà un voto da 0 a 10 con il motivo, e indica **chi parla** e la sua **autorità** sull'argomento (alta / media / bassa / sconosciuta). Sulle schede compare la riga «👤 autore · autorità: livello».
 - ⏹️ **Annulla ricerca**: durante l'avanzamento c'è il pulsante «Annulla». Una nuova ricerca annulla automaticamente quella in corso; una ricerca annullata non cambia i risultati e non mostra errori.
 - 👤 **Chi parla e con quale autorità** (pagina video, sotto la valutazione): l'AI prepara una scheda con

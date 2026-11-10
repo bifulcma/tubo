@@ -119,3 +119,12 @@ describe('passo 3: autore e autorità', () => {
     expect(v[1].aiAutorita).toBeUndefined();
   });
 });
+
+describe('demo — durata pensata per video lunghi', async () => {
+  const { mockAiPlanSearch } = await import('./demo/mockAi');
+  it('20 minuti di base, 0 per video brevi, durata precisa rispettata', () => {
+    expect(mockAiPlanSearch('Carl Schmitt e il katechon').durata_minima_min).toBe(20);
+    expect(mockAiPlanSearch('video brevi su Carl Schmitt').durata_minima_min).toBe(0);
+    expect(mockAiPlanSearch('Schmitt, almeno 45 minuti').durata_minima_min).toBe(45);
+  });
+});

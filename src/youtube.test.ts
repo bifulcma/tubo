@@ -98,8 +98,8 @@ describe('youtube.ts — lingua, durata, cache, canali', async () => {
   it('durata minima → videoDuration', () => {
     expect(durataPerYouTube(0)).toBeUndefined();
     expect(durataPerYouTube(3)).toBeUndefined();
-    expect(durataPerYouTube(4)).toBe('medium');
-    expect(durataPerYouTube(19)).toBe('medium');
+    expect(durataPerYouTube(4)).toBeUndefined();
+    expect(durataPerYouTube(19)).toBeUndefined();
     expect(durataPerYouTube(20)).toBe('long');
   });
 
