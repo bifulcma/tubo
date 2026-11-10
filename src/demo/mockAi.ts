@@ -1,4 +1,4 @@
-import { SearchPlan, VideoEvaluation, VideoItem } from '../types';
+import { ChannelDetails, ChiParla, SearchPlan, VideoEvaluation, VideoItem } from '../types';
 import { DEMO_VIDEOS } from './mockVideos';
 import { generateSvgThumbnail } from './svgThumbnails';
 
@@ -185,6 +185,13 @@ export function mockAiFetchVideos(plan: SearchPlan, userPrompt: string): VideoIt
  * Scarta o penalizza acchiappa-clic e premia video specialistici aderenti alla richiesta.
  */
 export function mockAiEvaluateVideos(userPrompt: string, videos: VideoItem[]): VideoEvaluation[] {
+  return valutaDemo(userPrompt, videos).map((ev) => {
+    const p = DEMO_PERSONE[videos.find((v) => v.id === ev.id)?.channelId ?? ''];
+    return { ...ev, autore: p?.autore ?? 'non indicato', autorita: p?.livello ?? 'sconosciuta' };
+  });
+}
+
+function valutaDemo(userPrompt: string, videos: VideoItem[]): VideoEvaluation[] {
   const lowerPrompt = userPrompt.toLowerCase();
   const isHighLevel = lowerPrompt.includes('serie') || lowerPrompt.includes('non divulgativ') || lowerPrompt.includes('katechon');
 
@@ -237,4 +244,100 @@ export function mockAiEvaluateVideos(userPrompt: string, videos: VideoItem[]): V
       motivo: 'Contenuto valido e coerente con la ricerca, buon livello informativo generale.',
     };
   });
+}
+
+
+// --- «Chi parla e con quale autorità»: dati INVENTATI per la dimostrazione ---
+interface PersonaDemo {
+  tipo: string;
+  autore: string;
+  ruolo: string;
+  livello: 'alta' | 'media' | 'bassa' | 'sconosciuta';
+  legittimazione: string;
+  orientamento: string;
+  iscritti?: number;
+  video: number;
+  dal: string;
+  paese: string;
+}
+
+const DEMO_PERSONE: Record<string, PersonaDemo> = {
+  UC_arch_filo: {
+    tipo: "Canale di un'associazione culturale (inventata) che pubblica registrazioni di seminari universitari di filosofia.",
+    autore: 'Prof. Livio Marchetti (relatore inventato)',
+    ruolo: 'Docente di filosofia politica in un ateneo immaginario; autore di un saggio fittizio sul katechon.',
+    livello: 'alta',
+    legittimazione: "Il relatore si occupa da anni di teologia politica e di Carl Schmitt: è competente sull'argomento. Dato dimostrativo, non verificato.",
+    orientamento: 'Approccio accademico; nessuna appartenenza dichiarata.',
+    iscritti: 18400, video: 212, dal: '2014-03-02', paese: 'IT',
+  },
+  UC_inst_rechts: {
+    tipo: 'Canale di un istituto universitario (inventato) di filosofia e storia del diritto.',
+    autore: 'Dr. Anna Weber (relatrice inventata)',
+    ruolo: 'Ricercatrice di storia del diritto pubblico (affiliazione immaginaria).',
+    livello: 'alta',
+    legittimazione: 'Specialista di diritto pubblico tedesco del Novecento. Dato dimostrativo.',
+    orientamento: 'non risulta',
+    iscritti: 6200, video: 95, dal: '2016-10-12', paese: 'DE',
+  },
+  UC_cattedra_pol: {
+    tipo: 'Canale di una cattedra universitaria (inventata) di teoria politica.',
+    autore: 'non indicato',
+    ruolo: 'non risulta',
+    livello: 'media',
+    legittimazione: 'Contesto universitario, ma il relatore non è indicato. Dato dimostrativo.',
+    orientamento: 'non risulta',
+    iscritti: 3100, video: 48, dal: '2019-01-20', paese: 'IT',
+  },
+  UC_clickbait_zone: {
+    tipo: 'Canale di divulgazione sensazionalistica (inventato) che rimonta spezzoni di altri video.',
+    autore: 'non indicato',
+    ruolo: 'non risulta',
+    livello: 'bassa',
+    legittimazione: 'Nessuna competenza dichiarata; titoli acchiappa-clic e nessuna fonte. Dato dimostrativo.',
+    orientamento: 'Fini commerciali (visualizzazioni).',
+    video: 1840, dal: '2021-06-01', paese: 'IT',
+  },
+};
+
+const PERSONA_GENERICA: PersonaDemo = {
+  tipo: 'Canale dimostrativo inventato.',
+  autore: 'non indicato',
+  ruolo: 'non risulta',
+  livello: 'sconosciuta',
+  legittimazione: 'Nella dimostrazione non ci sono dati su questo relatore.',
+  orientamento: 'non risulta',
+  iscritti: 2500, video: 60, dal: '2018-05-05', paese: 'IT',
+};
+
+export function mockChannelDetails(channelId: string, title: string): ChannelDetails {
+  const p = DEMO_PERSONE[channelId] ?? PERSONA_GENERICA;
+  return {
+    id: channelId,
+    title,
+    description: `${p.tipo} (Dati di dimostrazione: canale e numeri sono inventati.)`,
+    country: p.paese,
+    publishedAt: p.dal,
+    subscriberCount: p.iscritti,
+    videoCount: p.video,
+    viewCount: (p.iscritti ?? 50000) * 37,
+    demo: true,
+  };
+}
+
+export function mockChiParla(video: VideoItem): ChiParla {
+  const p = DEMO_PERSONE[video.channelId] ?? PERSONA_GENERICA;
+  return {
+    canale: `${p.tipo} Esiste dal ${p.dal.slice(0, 4)}, ${p.iscritti ? p.iscritti.toLocaleString('it-IT') + ' iscritti' : 'iscritti nascosti'}, ${p.video} video.`,
+    autore: p.autore,
+    ruolo_affiliazione: p.ruolo,
+    legittimazione: p.legittimazione,
+    livello: p.livello,
+    orientamento: p.orientamento,
+    fonti: [],
+    certezza: 'dedotto',
+    webUsato: false,
+    at: Date.now(),
+    demo: true,
+  };
 }

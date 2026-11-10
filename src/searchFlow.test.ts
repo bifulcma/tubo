@@ -98,3 +98,24 @@ describe('ricerca reale con fetch finto (nessuna chiamata vera)', () => {
     expect(videos[0].id).toBe('v1');
   });
 });
+
+describe('passo 3: autore e autorità', () => {
+  it('li legge quando ci sono e accetta risposte senza (retro-compatibile)', async () => {
+    let n = 0;
+    const fetchFn = vi.fn().mockImplementation(async (u: string) => {
+      if (u.startsWith('https://ponte.test')) {
+        n++;
+        if (n === 1) return rispostaPonte('{"ricerche":["autorita prova"],"lingue":["it"]}');
+        return rispostaPonte('[{"id":"a1","punteggio":8,"motivo":"m","autore":"Prof. Y","autorita":"Media"},{"id":"a2","punteggio":7,"motivo":"m"}]');
+      }
+      const url = new URL(u);
+      if (url.pathname.endsWith('/search')) return { ok: true, json: async () => ({ items: [{ id: { videoId: 'a1' } }, { id: { videoId: 'a2' } }] }) };
+      if (url.pathname.endsWith('/videos')) return { ok: true, json: async () => ({ items: ['a1', 'a2'].map((id) => ({ id, snippet: { title: id, channelId: 'UCx' + id } })) }) };
+      return { ok: false, status: 403, statusText: 'quota', json: async () => ({}) };   // canali: errore → si va avanti
+    });
+    const v = await executeAiSearch({ query: 'autorita prova', provider: 'nemotron', settings: reale, onStatusUpdate: () => {}, fetchFn });
+    expect(v[0]).toMatchObject({ id: 'a1', aiAutore: 'Prof. Y', aiAutorita: 'media' });
+    expect(v[1].aiAutore).toBeUndefined();
+    expect(v[1].aiAutorita).toBeUndefined();
+  });
+});

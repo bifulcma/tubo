@@ -9,11 +9,15 @@ import {
   ArrowLeft,
   Clock,
 } from 'lucide-react';
-import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS } from '../types';
+import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS, ChiParla } from '../types';
 import { reviewVideo, VideoReview, digestFromTranscript, findMoment, TranscriptDigest } from '../searchOrchestrator';
 import { loadReview, saveReview, loadDigest, saveDigest } from '../storage';
 import { formatViews, formatDate } from '../youtube';
 import { shareUrl } from '../router';
+import { fetchChannelDetails } from '../youtube';
+import { analizzaChiParla, loadChiParla } from '../chiParla';
+import { mockChiParla } from '../demo/mockAi';
+import { ChiParlaBox } from '../components/ChiParlaBox';
 
 interface WatchViewProps {
   video: VideoItem;
@@ -73,6 +77,50 @@ export const WatchView: React.FC<WatchViewProps> = ({
         setReviewState('error');
       });
     return () => { attivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video.id]);
+
+
+  // «Chi parla e con quale autorità»: preparato all'apertura, poi ricordato (per video e per canale)
+  const [chi, setChi] = useState<ChiParla | null>(null);
+  const [chiStato, setChiStato] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [chiErrore, setChiErrore] = useState('');
+  const chiAttivo = React.useRef<string>('');
+
+  const preparaChiParla = (forza: boolean) => {
+    const vid = video.id;
+    chiAttivo.current = vid;
+    setChiErrore('');
+    if (finto) {
+      setChiStato('loading');
+      setTimeout(() => {
+        if (chiAttivo.current !== vid) return;
+        setChi(mockChiParla(video));
+        setChiStato('idle');
+      }, 350);
+      return;
+    }
+    if (!forza) {
+      const salvato = loadChiParla(vid);
+      if (salvato) { setChi(salvato); setChiStato('idle'); return; }
+    }
+    setChiStato('loading');
+    fetchChannelDetails({ ids: [video.channelId], apiKey: settings.youtubeApiKey })
+      .then((c) => c[video.channelId])
+      .catch(() => undefined)
+      .then((channel) => analizzaChiParla({ video, channel, provider, settings }))
+      .then((r) => { if (chiAttivo.current === vid) { setChi(r); setChiStato('idle'); } })
+      .catch((e: any) => {
+        if (chiAttivo.current !== vid) return;
+        setChiErrore(e?.message || 'Errore');
+        setChiStato('error');
+      });
+  };
+
+  useEffect(() => {
+    setChi(null);
+    preparaChiParla(false);
+    return () => { chiAttivo.current = ''; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.id]);
 
@@ -208,7 +256,7 @@ export const WatchView: React.FC<WatchViewProps> = ({
                   {video.channelTitle}
                 </h4>
                 <p className="text-xs text-slate-400 light:text-slate-500">
-                  Canale verificato
+                  Apri la pagina del canale
                 </p>
               </div>
             </div>
@@ -286,6 +334,16 @@ export const WatchView: React.FC<WatchViewProps> = ({
               )}
             </div>
           )}
+
+          {/* Chi parla e con quale autorità */}
+          <ChiParlaBox
+            data={chi}
+            stato={chiStato}
+            errore={chiErrore}
+            argomento={video.aiQuery}
+            nomeAi={AI_PROVIDERS[provider]?.name ?? provider}
+            onAggiorna={() => preparaChiParla(true)}
+          />
 
           {/* Dalla trascrizione */}
           {!finto && (

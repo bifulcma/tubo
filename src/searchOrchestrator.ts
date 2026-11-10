@@ -1,4 +1,4 @@
-import { AiProvider, AppSettings, ChannelDetails, PlannedQuery, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua, testoRicerca } from './types';
+import { AiProvider, AppSettings, ChannelDetails, PlannedQuery, normalizzaLivello, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua, testoRicerca } from './types';
 import { askBridge, fetchTranscript, transcriptToText } from './ponte';
 import { mockAiEvaluateVideos, mockAiFetchVideos, mockAiPlanSearch } from './demo/mockAi';
 import { durataPerYouTube, fetchChannelDetails, fetchYouTubeVideoDetails, searchYouTubeVideos } from './youtube';
@@ -340,7 +340,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
       descrizione: v.description.slice(0, 800),
     }));
 
-    const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Scrivi il motivo in ${nomeLingua(settings.aiLanguage)}. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase"}]. Nessun testo prima o dopo.`;
+    const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Per ogni video indica anche "autore" (chi parla, se si capisce da titolo, descrizione o canale, altrimenti "non indicato"; non inventare nomi) e "autorita" sull'argomento della richiesta: "alta" | "media" | "bassa" | "sconosciuta" (usa i dati del canale quando ci sono). Scrivi il motivo in ${nomeLingua(settings.aiLanguage)}. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase", "autore": "...", "autorita": "alta|media|bassa|sconosciuta"}]. Nessun testo prima o dopo.`;
 
     let evalRaw: string;
     try {
@@ -365,7 +365,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
           plan,
         });
 
-        const retryPrompt = `ERRORE: La risposta precedente non era un array JSON valido. Rispondi ORA SOLTANTO con l'array JSON: [{"id": "...", "punteggio": 0-10, "motivo": "una frase"}]`;
+        const retryPrompt = `ERRORE: La risposta precedente non era un array JSON valido. Rispondi ORA SOLTANTO con l'array JSON: [{"id": "...", "punteggio": 0-10, "motivo": "una frase", "autore": "...", "autorita": "alta|media|bassa|sconosciuta"}]`;
         evalRaw = await askBridge({
           bridgeUrl: settings.bridgeUrl,
           token: settings.bridgeToken,
@@ -409,9 +409,12 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     const evaluation = evalMap.get(v.id);
     return {
       ...v,
-      aiScore: evaluation ? Math.max(0, Math.min(10, evaluation.punteggio)) : 5.0,
+      aiScore: evaluation ? Math.max(0, Math.min(10, Number(evaluation.punteggio) || 0)) : 5.0,
       aiReason: evaluation ? evaluation.motivo : 'Video selezionato dalla ricerca.',
       aiQuery: query,
+      // retro-compatibile: se l'AI non manda autore/autorità i campi restano vuoti
+      aiAutore: evaluation?.autore ? String(evaluation.autore).trim() || undefined : undefined,
+      aiAutorita: normalizzaLivello(evaluation?.autorita),
     };
   });
 

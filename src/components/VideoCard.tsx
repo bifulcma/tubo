@@ -2,6 +2,7 @@ import React from 'react';
 import { Bookmark, Sparkles, Clock, Check, Play } from 'lucide-react';
 import { VideoItem } from '../types';
 import { formatViews, formatDate } from '../youtube';
+import { RigaAutorita } from './ChiParlaBox';
 
 interface VideoCardProps {
   video: VideoItem;
@@ -137,6 +138,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
               </>
             )}
           </div>
+          <RigaAutorita autore={video.aiAutore} livello={video.aiAutorita} />
         </div>
 
         {/* AI Reason ("Il perché dell'AI") */}

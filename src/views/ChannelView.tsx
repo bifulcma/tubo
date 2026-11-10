@@ -3,7 +3,11 @@ import { ArrowLeft, Tv } from 'lucide-react';
 import { AiProvider, AppSettings, ChannelDetails, VideoItem } from '../types';
 import { VideoGrid } from '../components/VideoGrid';
 import { ChannelCard } from '../components/ChannelCard';
-import { fetchChannelVideos } from '../youtube';
+import { fetchChannelDetails, fetchChannelVideos } from '../youtube';
+import { ChiECanaleBox } from '../components/ChiParlaBox';
+import { ChiECanale, analizzaCanale, loadChiECanale } from '../chiParla';
+import { mockChannelDetails, mockChiParla } from '../demo/mockAi';
+import { AI_PROVIDERS } from '../types';
 
 interface ChannelViewProps {
   channelId: string;
@@ -27,9 +31,35 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
   onToggleWatchLater,
   onBack,
   settings,
+  provider,
   demo,
 }) => {
-  const [channel, setChannel] = useState<ChannelDetails | undefined>(undefined);
+  const [channel, setChannel] = useState<ChannelDetails | undefined>(() =>
+    demo ? mockChannelDetails(channelId, channelTitle || 'Canale dimostrativo') : undefined
+  );
+  const [giudizio, setGiudizio] = useState<ChiECanale | null>(() => (demo ? null : loadChiECanale(channelId)));
+  const [giudizioStato, setGiudizioStato] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [giudizioErrore, setGiudizioErrore] = useState('');
+
+  const chiediGiudizio = async () => {
+    setGiudizioStato('loading');
+    setGiudizioErrore('');
+    try {
+      if (demo) {
+        await new Promise((r) => setTimeout(r, 350));
+        const m = mockChiParla({ channelId, channelTitle } as VideoItem);
+        setGiudizio({ canale: m.canale, orientamento: m.orientamento, fonti: [], certezza: 'dedotto', webUsato: false, at: Date.now(), demo: true });
+      } else {
+        const c = channel ?? (await fetchChannelDetails({ ids: [channelId], apiKey: settings.youtubeApiKey }))[channelId];
+        if (!c) throw new Error('YouTube non conosce questo canale.');
+        setGiudizio(await analizzaCanale({ channel: c, provider, settings }));
+      }
+      setGiudizioStato('idle');
+    } catch (e: any) {
+      setGiudizioErrore(e?.message || 'Errore');
+      setGiudizioStato('error');
+    }
+  };
   const [veri, setVeri] = useState<VideoItem[]>([]);
   const [stato, setStato] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errore, setErrore] = useState('');
@@ -74,7 +104,15 @@ export const ChannelView: React.FC<ChannelViewProps> = ({
         fallbackTitle={channelTitle || channel?.title || ''}
         loading={!demo && stato === 'loading' && !channel}
         error={!demo && stato === 'error' ? errore : undefined}
-      />
+      >
+        <ChiECanaleBox
+          data={giudizio}
+          stato={giudizioStato}
+          errore={giudizioErrore}
+          nomeAi={AI_PROVIDERS[provider]?.name ?? provider}
+          onChiedi={chiediGiudizio}
+        />
+      </ChannelCard>
 
       <section>
         <div className="flex items-center gap-2 mb-4">
