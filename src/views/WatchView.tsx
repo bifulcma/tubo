@@ -13,6 +13,7 @@ import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS } from '../types';
 import { reviewVideo, VideoReview, digestFromTranscript, findMoment, TranscriptDigest } from '../searchOrchestrator';
 import { loadReview, saveReview, loadDigest, saveDigest } from '../storage';
 import { formatViews, formatDate } from '../youtube';
+import { shareUrl } from '../router';
 
 interface WatchViewProps {
   video: VideoItem;
@@ -125,9 +126,10 @@ export const WatchView: React.FC<WatchViewProps> = ({
   };
 
   const handleShare = () => {
-    const shareUrl = `https://www.youtube.com/watch?v=${video.id}`;
+    // l'indirizzo di questa pagina di Tubo (si riapre direttamente sul video)
+    const link = shareUrl({ page: 'watch', id: video.id });
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareUrl);
+      navigator.clipboard.writeText(link).catch(() => { /* niente */ });
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     }

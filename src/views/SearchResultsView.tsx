@@ -14,6 +14,7 @@ interface SearchResultsViewProps {
   savedVideoIds: Set<string>;
   onToggleWatchLater: (video: VideoItem) => void;
   onRetry: () => void;
+  onCancel?: () => void;
   onBackToHome: () => void;
 }
 
@@ -27,6 +28,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
   savedVideoIds,
   onToggleWatchLater,
   onRetry,
+  onCancel,
   onBackToHome,
 }) => {
   const currentProvider = AI_PROVIDERS[provider];
@@ -71,7 +73,23 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
       </div>
 
       {/* Progress Stepper & Details */}
-      <SearchProgress status={status} onRetry={onRetry} />
+      <SearchProgress status={status} onRetry={onRetry} onCancel={onCancel} />
+
+      {/* Ricerca aperta da un indirizzo ma non salvata su questo dispositivo */}
+      {status.step === 'idle' && (
+        <div className="w-full max-w-4xl mx-auto my-6 p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800 light:bg-white light:border-slate-200 space-y-3">
+          <p className="text-base font-bold text-white light:text-slate-900">Questa ricerca non è salvata su questo dispositivo.</p>
+          <p className="text-sm text-slate-300 light:text-slate-600">
+            Per vedere i risultati bisogna rifarla: l'AI lavora di nuovo e si usa un po' della quota di YouTube.
+          </p>
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
+          >
+            Fai la ricerca
+          </button>
+        </div>
+      )}
 
       {/* Results Video Grid */}
       {isFinished && (

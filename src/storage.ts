@@ -283,3 +283,44 @@ export function saveDigest(videoId: string, d: { riassunto: string; capitoli: { 
     setStorageItem(DIGEST_KEY, JSON.stringify(all));
   } catch { /* niente */ }
 }
+
+
+// --- Cache con scadenza (risultati YouTube, canali, «Chi parla») ---
+interface CacheEntry<T> { at: number; v: T }
+
+export function cacheGet<T>(bucket: string, key: string, maxAgeMs: number, now = Date.now()): T | null {
+  try {
+    const all = JSON.parse(getStorageItem(bucket) || '{}') as Record<string, CacheEntry<T>>;
+    const e = all[key];
+    if (!e || typeof e.at !== 'number' || now - e.at > maxAgeMs) return null;
+    return e.v;
+  } catch {
+    return null;
+  }
+}
+
+export function cacheSet<T>(bucket: string, key: string, value: T, maxEntries = 300, now = Date.now()): void {
+  try {
+    let all: Record<string, CacheEntry<T>> = {};
+    try { all = JSON.parse(getStorageItem(bucket) || '{}'); } catch { all = {}; }
+    delete all[key];
+    all[key] = { at: now, v: value };
+    const keys = Object.keys(all);
+    for (const k of keys.slice(0, Math.max(0, keys.length - maxEntries))) delete all[k];
+    setStorageItem(bucket, JSON.stringify(all));
+  } catch { /* spazio pieno: pazienza, si rifà la chiamata */ }
+}
+
+export function cacheDelete(bucket: string, key: string): void {
+  try {
+    const all = JSON.parse(getStorageItem(bucket) || '{}');
+    delete all[key];
+    setStorageItem(bucket, JSON.stringify(all));
+  } catch { /* niente */ }
+}
+
+export const CACHE_RICERCHE_YT = 'tubo_cache_ricerche_yt_v1';
+export const CACHE_CANALI_YT = 'tubo_cache_canali_yt_v1';
+export const CACHE_CHI_PARLA = 'tubo_chi_parla_v1';
+export const CACHE_CHI_E_CANALE = 'tubo_chi_e_canale_v1';
+export const UN_GIORNO = 24 * 60 * 60 * 1000;

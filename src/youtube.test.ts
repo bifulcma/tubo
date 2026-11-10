@@ -91,3 +91,83 @@ describe('youtube.ts', () => {
     });
   });
 });
+
+describe('youtube.ts — lingua, durata, cache, canali', async () => {
+  const { durataPerYouTube, fetchChannelDetails, fetchChannelVideos } = await import('./youtube');
+
+  it('durata minima → videoDuration', () => {
+    expect(durataPerYouTube(0)).toBeUndefined();
+    expect(durataPerYouTube(3)).toBeUndefined();
+    expect(durataPerYouTube(4)).toBe('medium');
+    expect(durataPerYouTube(19)).toBe('medium');
+    expect(durataPerYouTube(20)).toBe('long');
+  });
+
+  it('search.list: passa lingua e durata e usa la cache 24 h', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [{ id: { videoId: 'v1' } }] }) });
+    const p = { query: 'cache test unico', apiKey: 'k', relevanceLanguage: 'de', videoDuration: 'long' as const, fetchFn: mockFetch as any };
+    expect(await searchYouTubeVideos(p)).toEqual(['v1']);
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    expect(url.searchParams.get('relevanceLanguage')).toBe('de');
+    expect(url.searchParams.get('videoDuration')).toBe('long');
+    expect(await searchYouTubeVideos(p)).toEqual(['v1']);
+    expect(mockFetch).toHaveBeenCalledTimes(1);                 // seconda volta dalla cache
+    await searchYouTubeVideos({ ...p, relevanceLanguage: 'it' }); // lingua diversa = chiave diversa
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('channels.list: un\'unica chiamata per più canali, iscritti nascosti, cache 7 giorni', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            id: 'UCa1',
+            snippet: { title: 'Ateneo', description: 'Lezioni', country: 'IT', publishedAt: '2012-05-01T00:00:00Z', customUrl: '@ateneo' },
+            statistics: { subscriberCount: '1200', videoCount: '340', viewCount: '99000', hiddenSubscriberCount: false },
+            contentDetails: { relatedPlaylists: { uploads: 'UUa1' } },
+            topicDetails: { topicCategories: ['https://en.wikipedia.org/wiki/Philosophy'] },
+          },
+          { id: 'UCb2', snippet: { title: 'Nascosto' }, statistics: { subscriberCount: '0', hiddenSubscriberCount: true, videoCount: '5' } },
+        ],
+      }),
+    });
+    const r = await fetchChannelDetails({ ids: ['UCa1', 'UCb2', 'UCa1'], apiKey: 'k', fetchFn: mockFetch as any });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    expect(url.searchParams.get('id')).toBe('UCa1,UCb2');
+    expect(url.searchParams.get('part')).toContain('snippet,statistics,brandingSettings,topicDetails');
+    expect(r.UCa1).toMatchObject({ title: 'Ateneo', country: 'IT', subscriberCount: 1200, videoCount: 340, viewCount: 99000, customUrl: '@ateneo', uploadsPlaylistId: 'UUa1', topics: ['Philosophy'] });
+    expect(r.UCb2.subscriberCount).toBeUndefined();
+    // di nuovo: tutto dalla cache, nessuna chiamata
+    await fetchChannelDetails({ ids: ['UCa1', 'UCb2'], apiKey: 'k', fetchFn: mockFetch as any });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('channels.list: oltre 50 canali divide in più chiamate', async () => {
+    const mockFetch = vi.fn().mockImplementation(async (u: string) => {
+      const ids = new URL(u).searchParams.get('id')!.split(',');
+      return { ok: true, json: async () => ({ items: ids.map((id) => ({ id, snippet: { title: id } })) }) };
+    });
+    const ids = Array.from({ length: 60 }, (_, i) => `UCmolti${i}`);
+    const r = await fetchChannelDetails({ ids, apiKey: 'k', fetchFn: mockFetch as any });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(Object.keys(r)).toHaveLength(60);
+  });
+
+  it('video del canale: playlist uploads → playlistItems → videos.list', async () => {
+    const mockFetch = vi.fn().mockImplementation(async (u: string) => {
+      const url = new URL(u);
+      if (url.pathname.endsWith('/channels')) return { ok: true, json: async () => ({ items: [{ id: 'UCvid', snippet: { title: 'Canale' }, contentDetails: { relatedPlaylists: { uploads: 'UUvid' } } }] }) };
+      if (url.pathname.endsWith('/playlistItems')) {
+        expect(url.searchParams.get('playlistId')).toBe('UUvid');
+        return { ok: true, json: async () => ({ items: [{ contentDetails: { videoId: 'x1' } }, { contentDetails: { videoId: 'x2' } }] }) };
+      }
+      return { ok: true, json: async () => ({ items: [{ id: 'x1', snippet: { title: 'A', channelId: 'UCvid' } }, { id: 'x2', snippet: { title: 'B', channelId: 'UCvid' } }] }) };
+    });
+    const r = await fetchChannelVideos({ channelId: 'UCvid', apiKey: 'k', fetchFn: mockFetch as any });
+    expect(r.channel?.title).toBe('Canale');
+    expect(r.videos.map((v) => v.id)).toEqual(['x1', 'x2']);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+});

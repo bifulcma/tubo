@@ -106,3 +106,19 @@ describe('ultime ricerche', () => {
     expect(removeSavedSearch('Bach', 'nemotron').map((e) => e.query)).toEqual(['schmitt ']);
   });
 });
+
+describe('cache con scadenza', async () => {
+  const { cacheGet, cacheSet } = await import('./storage');
+  it('restituisce il valore entro la scadenza e null dopo', () => {
+    cacheSet('test_cache', 'k', [1, 2], 10, 1000);
+    expect(cacheGet('test_cache', 'k', 500, 1400)).toEqual([1, 2]);
+    expect(cacheGet('test_cache', 'k', 500, 1600)).toBeNull();
+    expect(cacheGet('test_cache', 'altro', 500, 1400)).toBeNull();
+  });
+
+  it('tiene solo le voci più recenti', () => {
+    for (let i = 0; i < 5; i++) cacheSet('test_cache2', 'k' + i, i, 3, 1000);
+    expect(cacheGet('test_cache2', 'k0', 1e9, 1000)).toBeNull();
+    expect(cacheGet('test_cache2', 'k4', 1e9, 1000)).toBe(4);
+  });
+});

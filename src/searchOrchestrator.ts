@@ -1,7 +1,7 @@
-import { AiProvider, AppSettings, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua } from './types';
+import { AiProvider, AppSettings, ChannelDetails, PlannedQuery, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua, testoRicerca } from './types';
 import { askBridge, fetchTranscript, transcriptToText } from './ponte';
 import { mockAiEvaluateVideos, mockAiFetchVideos, mockAiPlanSearch } from './demo/mockAi';
-import { fetchYouTubeVideoDetails, searchYouTubeVideos } from './youtube';
+import { durataPerYouTube, fetchChannelDetails, fetchYouTubeVideoDetails, searchYouTubeVideos } from './youtube';
 
 export interface RunSearchParams {
   query: string;
@@ -58,14 +58,89 @@ export function isDemoMode(settings: AppSettings): boolean {
   return false;
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Errore usato quando l'utente annulla: non va mostrato come errore rosso. */
+export class RicercaAnnullata extends Error {
+  constructor() {
+    super('Ricerca annullata.');
+    this.name = 'AbortError';
+  }
+}
+
+export function isAnnullata(err: unknown, signal?: AbortSignal): boolean {
+  return !!signal?.aborted || (err as any)?.name === 'AbortError';
+}
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(new RicercaAnnullata());
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => { clearTimeout(t); reject(new RicercaAnnullata()); }, { once: true });
+  });
+
+const CODICE_LINGUA = /^[a-z]{2}$/;
+
+function codiceLingua(x: unknown): string | undefined {
+  const v = String(x ?? '').trim().toLowerCase().slice(0, 2);
+  return CODICE_LINGUA.test(v) ? v : undefined;
+}
+
+/**
+ * Mette in ordine il piano dell'AI. Accetta sia il vecchio formato
+ * ("ricerche": ["..."]) sia il nuovo ("ricerche": [{"q": "...", "lingua": "de"}]).
+ */
+export function normalizePlan(raw: any, query: string): SearchPlan {
+  const p: any = raw && typeof raw === 'object' ? raw : {};
+  const ricerche: PlannedQuery[] = (Array.isArray(p.ricerche) ? p.ricerche : [])
+    .map((r: any): PlannedQuery | null => {
+      if (typeof r === 'string') return r.trim() ? r.trim() : null;
+      if (r && typeof r === 'object' && typeof r.q === 'string' && r.q.trim()) {
+        const lingua = codiceLingua(r.lingua);
+        return lingua ? { q: r.q.trim(), lingua } : { q: r.q.trim() };
+      }
+      return null;
+    })
+    .filter((r: PlannedQuery | null): r is PlannedQuery => r !== null);
+  const lingue = (Array.isArray(p.lingue) ? p.lingue : []).map(codiceLingua).filter(Boolean) as string[];
+  const durata = Number(p.durata_minima_min);
+  return {
+    ricerche: ricerche.length ? ricerche : [query],
+    lingue: lingue.length ? lingue : ['it'],
+    durata_minima_min: isFinite(durata) && durata > 0 ? durata : 0,
+    escludi: (Array.isArray(p.escludi) ? p.escludi : []).map((e: any) => String(e)).filter((e: string) => e.trim()),
+  };
+}
+
+/** Lingua con cui cercare una singola ricerca del piano (relevanceLanguage). */
+export function linguaRicerca(r: PlannedQuery, plan: SearchPlan): string | undefined {
+  if (typeof r !== 'string' && r.lingua) return r.lingua;
+  return plan.lingue[0];
+}
+
+/** Dati del canale da dare all'AI al passo 3 (solo l'essenziale). */
+export function canaleInBreve(c?: ChannelDetails): Record<string, unknown> | undefined {
+  if (!c) return undefined;
+  return {
+    iscritti: c.subscriberCount ?? 'nascosti',
+    video_pubblicati: c.videoCount,
+    paese: c.country,
+    dal: c.publishedAt ? c.publishedAt.slice(0, 4) : undefined,
+    descrizione: (c.description || '').replace(/\s+/g, ' ').slice(0, 200),
+  };
+}
 
 /**
  * Orchestratore principale della ricerca guidata dall'AI (Passo 1 -> Passo 2 -> Passo 3).
  */
 export async function executeAiSearch(params: RunSearchParams): Promise<VideoItem[]> {
-  const { query, provider, settings, onStatusUpdate, signal, fetchFn = fetch } = params;
+  const { query, provider, settings, signal, fetchFn = fetch } = params;
   const inDemo = isDemoMode(settings);
+  // una ricerca annullata non deve più toccare lo schermo
+  const onStatusUpdate = (st: SearchStatus) => {
+    if (!signal?.aborted) params.onStatusUpdate(st);
+  };
+  const controlla = () => {
+    if (signal?.aborted) throw new RicercaAnnullata();
+  };
 
   // --- PASSO 1: L'AI prepara le ricerche ---
   onStatusUpdate({
@@ -77,10 +152,10 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
   let plan: SearchPlan;
 
   if (inDemo) {
-    await sleep(400);
+    await sleep(400, signal);
     plan = mockAiPlanSearch(query);
   } else {
-    const systemPrompt = `Sei il motore di ricerca di Tubo. Analizza la richiesta in linguaggio naturale dell'utente e pianifica da 2 a 4 ricerche mirate per YouTube, identificando lingue, durata minima in minuti ed eventuali termini da escludere. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido nel seguente formato: {"ricerche": ["query 1", "query 2"], "lingue": ["it", "de"], "durata_minima_min": 0, "escludi": ["parola1"]}. Non aggiungere alcun testo, commento o spiegazione oltre al JSON.${
+    const systemPrompt = `Sei il motore di ricerca di Tubo. Analizza la richiesta in linguaggio naturale dell'utente e pianifica da 2 a 4 ricerche mirate per YouTube, identificando lingue, durata minima in minuti ed eventuali termini da escludere. Ogni ricerca va scritta nella lingua in cui vuoi trovare i video e porta il codice di quella lingua. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido nel seguente formato: {"ricerche": [{"q": "query 1", "lingua": "it"}, {"q": "query 2", "lingua": "de"}], "lingue": ["it", "de"], "durata_minima_min": 0, "escludi": ["parola1"]}. "lingue" elenca le lingue in ordine di preferenza (la prima è la principale). Non aggiungere alcun testo, commento o spiegazione oltre al JSON.${
       settings.videoLanguages?.length
         ? ` L'utente preferisce video in: ${settings.videoLanguages.map(nomeLingua).join(', ')} (codici ${settings.videoLanguages.join(', ')}): scrivi le ricerche in quelle lingue e mettile in "lingue", salvo che la richiesta ne chieda esplicitamente altre.`
         : ''
@@ -108,7 +183,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
           details: 'La prima risposta non era un JSON valido, ritento con istruzioni più stringenti…',
         });
 
-        const retryPrompt = `ERRORE: La tua risposta non era un JSON valido o conteneva testo superfluo. Rispondi ORA SOLTANTO con il JSON grezzo: {"ricerche": ["..."], "lingue": ["..."], "durata_minima_min": 0, "escludi": ["..."]}`;
+        const retryPrompt = `ERRORE: La tua risposta non era un JSON valido o conteneva testo superfluo. Rispondi ORA SOLTANTO con il JSON grezzo: {"ricerche": [{"q": "...", "lingua": "it"}], "lingue": ["..."], "durata_minima_min": 0, "escludi": ["..."]}`;
 
         planRaw = await askBridge({
           bridgeUrl: settings.bridgeUrl,
@@ -127,6 +202,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
         }
       }
     } catch (err: any) {
+      if (isAnnullata(err, signal)) throw new RicercaAnnullata();
       onStatusUpdate({
         step: 'error',
         message: 'Errore nel Passo 1 (Pianificazione AI)',
@@ -136,44 +212,38 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     }
   }
 
-  // Normalizza campi piano
-  if (!Array.isArray(plan.ricerche) || plan.ricerche.length === 0) {
-    plan.ricerche = [query];
-  }
-  if (!Array.isArray(plan.lingue)) {
-    plan.lingue = ['it'];
-  }
-  if (typeof plan.durata_minima_min !== 'number') {
-    plan.durata_minima_min = 0;
-  }
-  if (!Array.isArray(plan.escludi)) {
-    plan.escludi = [];
-  }
+  // Normalizza campi piano (vecchio e nuovo formato)
+  plan = normalizePlan(plan, query);
+  controlla();
 
   // --- PASSO 2: Cerco su YouTube ---
   onStatusUpdate({
     step: 'fetching',
     message: 'Cerco su YouTube…',
-    details: `Esecuzione di ${plan.ricerche.length} ricerche: ${plan.ricerche.map((r) => `"${r}"`).join(', ')}`,
+    details: `Esecuzione di ${plan.ricerche.length} ricerche: ${plan.ricerche.map((r) => `"${testoRicerca(r)}"`).join(', ')}`,
     plan,
   });
 
   let rawVideos: VideoItem[] = [];
+  let canali: Record<string, ChannelDetails> = {};
 
   if (inDemo) {
-    await sleep(500);
+    await sleep(500, signal);
     rawVideos = mockAiFetchVideos(plan, query);
   } else {
     try {
       const allVideoIds = new Set<string>();
+      const videoDuration = durataPerYouTube(plan.durata_minima_min);
 
-      for (const singleQuery of plan.ricerche) {
-        if (signal?.aborted) throw new Error('Ricerca annullata.');
+      for (const r of plan.ricerche) {
+        controlla();
         const ids = await searchYouTubeVideos({
-          query: singleQuery,
+          query: testoRicerca(r),
           apiKey: settings.youtubeApiKey,
           maxResults: 12,
-          relevanceLanguage: settings.videoLanguages?.length === 1 ? settings.videoLanguages[0] : undefined,
+          relevanceLanguage: linguaRicerca(r, plan),
+          videoDuration,
+          signal,
           fetchFn,
         });
         ids.forEach((id) => allVideoIds.add(id));
@@ -193,6 +263,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
       const details = await fetchYouTubeVideoDetails({
         videoIds: uniqueIds,
         apiKey: settings.youtubeApiKey,
+        signal,
         fetchFn,
       });
 
@@ -211,7 +282,21 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
 
         return !isExcluded;
       });
+
+      // Chi sono i canali dei risultati: una sola chiamata (1 unità), se fallisce si va avanti senza
+      try {
+        canali = await fetchChannelDetails({
+          ids: rawVideos.map((v) => v.channelId),
+          apiKey: settings.youtubeApiKey,
+          signal,
+          fetchFn,
+        });
+      } catch (e) {
+        if (isAnnullata(e, signal)) throw e;
+        canali = {};
+      }
     } catch (err: any) {
+      if (isAnnullata(err, signal)) throw new RicercaAnnullata();
       onStatusUpdate({
         step: 'error',
         message: 'Errore nel Passo 2 (Ricerca YouTube)',
@@ -222,6 +307,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     }
   }
 
+  controlla();
   if (rawVideos.length === 0) {
     onStatusUpdate({
       step: 'done',
@@ -242,15 +328,16 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
   let evaluations: VideoEvaluation[] = [];
 
   if (inDemo) {
-    await sleep(600);
+    await sleep(600, signal);
     evaluations = mockAiEvaluateVideos(query, rawVideos);
   } else {
     const listSummary = rawVideos.map((v) => ({
       id: v.id,
       titolo: v.title,
       canale: v.channelTitle,
+      dati_canale: canaleInBreve(canali[v.channelId]),
       durata: v.duration,
-      descrizione: v.description.slice(0, 200),
+      descrizione: v.description.slice(0, 800),
     }));
 
     const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Scrivi il motivo in ${nomeLingua(settings.aiLanguage)}. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase"}]. Nessun testo prima o dopo.`;
@@ -296,6 +383,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
         }
       }
     } catch (err: any) {
+      if (isAnnullata(err, signal)) throw new RicercaAnnullata();
       onStatusUpdate({
         step: 'error',
         message: 'Errore nel Passo 3 (Valutazione AI)',
@@ -306,6 +394,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     }
   }
 
+  controlla();
   // Associa punteggio e motivo a ciascun video
   const evalMap = new Map<string, VideoEvaluation>();
   if (Array.isArray(evaluations)) {

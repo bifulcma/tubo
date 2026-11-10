@@ -23,6 +23,8 @@ export interface AskBridgeOptions {
   signal?: AbortSignal;
   fetchFn?: typeof fetch;
   onChunk?: (chunk: string) => void;
+  /** Se true il ponte può cercare in rete per verificare (default false). */
+  web?: boolean;
 }
 
 export class BridgeError extends Error {
@@ -152,6 +154,7 @@ export async function askBridge(options: AskBridgeOptions): Promise<string> {
     signal,
     fetchFn = fetch,
     onChunk,
+    web = false,
   } = options;
 
   if (!bridgeUrl) {
@@ -170,7 +173,7 @@ export async function askBridge(options: AskBridgeOptions): Promise<string> {
         content: prompt,
       },
     ],
-    web: false,
+    web,
   };
 
   const headers: Record<string, string> = {

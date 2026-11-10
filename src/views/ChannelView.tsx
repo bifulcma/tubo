@@ -1,79 +1,101 @@
-import React from 'react';
-import { ArrowLeft, Users, Tv } from 'lucide-react';
-import { VideoItem } from '../types';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Tv } from 'lucide-react';
+import { AiProvider, AppSettings, ChannelDetails, VideoItem } from '../types';
 import { VideoGrid } from '../components/VideoGrid';
+import { ChannelCard } from '../components/ChannelCard';
+import { fetchChannelVideos } from '../youtube';
 
 interface ChannelViewProps {
   channelId: string;
   channelTitle: string;
-  videos: VideoItem[];
+  videos: VideoItem[];          // solo in demo: catalogo finto da cui pescare
   onSelectVideo: (video: VideoItem) => void;
   savedVideoIds: Set<string>;
   onToggleWatchLater: (video: VideoItem) => void;
   onBack: () => void;
+  settings: AppSettings;
+  provider: AiProvider;
+  demo: boolean;
 }
 
 export const ChannelView: React.FC<ChannelViewProps> = ({
+  channelId,
   channelTitle,
   videos,
   onSelectVideo,
   savedVideoIds,
   onToggleWatchLater,
   onBack,
+  settings,
+  demo,
 }) => {
-  const channelVideos = videos.filter((v) => v.channelTitle === channelTitle);
+  const [channel, setChannel] = useState<ChannelDetails | undefined>(undefined);
+  const [veri, setVeri] = useState<VideoItem[]>([]);
+  const [stato, setStato] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [errore, setErrore] = useState('');
+
+  // Fuori dalla demo: i video veri del canale (pochi punti di quota)
+  useEffect(() => {
+    if (demo) return;
+    const ctrl = new AbortController();
+    setStato('loading');
+    fetchChannelVideos({ channelId, apiKey: settings.youtubeApiKey, signal: ctrl.signal })
+      .then((r) => {
+        setChannel(r.channel);
+        setVeri(r.videos);
+        setStato('idle');
+      })
+      .catch((e: any) => {
+        if (ctrl.signal.aborted) return;
+        setErrore(e?.message || 'Errore');
+        setStato('error');
+      });
+    return () => ctrl.abort();
+  }, [channelId, demo, settings.youtubeApiKey]);
+
+  const channelVideos = demo
+    ? videos.filter((v, i, arr) => (v.channelId === channelId || v.channelTitle === channelTitle) && arr.findIndex((x) => x.id === v.id) === i)
+    : veri;
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Back button */}
       <div>
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer text-xs font-medium light:bg-white light:border-slate-200 light:text-slate-700"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition cursor-pointer text-xs font-medium light:bg-white light:border-slate-200 light:text-slate-700"
         >
           <ArrowLeft className="w-4 h-4" />
           Torna indietro
         </button>
       </div>
 
-      {/* Channel Header Banner */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 border border-slate-800 p-6 sm:p-8 light:from-indigo-100 light:via-white light:to-purple-100 light:border-slate-200 shadow-xl">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center font-extrabold text-3xl shadow-xl ring-4 ring-slate-900 light:ring-white shrink-0">
-            {channelTitle.charAt(0).toUpperCase()}
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white light:text-slate-900 tracking-tight">
-              {channelTitle}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 light:text-slate-600 flex items-center justify-center sm:justify-start gap-2">
-              <Users className="w-4 h-4 text-indigo-400" />
-              <span>Canale con contenuti accademici e approfondimenti</span>
-            </p>
-            <p className="text-xs text-slate-500 max-w-xl">
-              Tutti i video e le lezioni catalogate per questo canale.
-            </p>
-          </div>
-        </div>
-      </div>
+      <ChannelCard
+        channel={channel}
+        fallbackTitle={channelTitle || channel?.title || ''}
+        loading={!demo && stato === 'loading' && !channel}
+        error={!demo && stato === 'error' ? errore : undefined}
+      />
 
-      {/* Videos from this channel */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <Tv className="w-4 h-4 text-slate-400" />
           <h2 className="text-lg font-bold text-white light:text-slate-900">
-            Video caricati ({channelVideos.length})
+            {demo ? `Video caricati (${channelVideos.length})` : `Ultimi video caricati (${channelVideos.length})`}
           </h2>
         </div>
 
-        <VideoGrid
-          videos={channelVideos}
-          onSelectVideo={onSelectVideo}
-          savedVideoIds={savedVideoIds}
-          onToggleWatchLater={onToggleWatchLater}
-          emptyMessage="Nessun video trovato per questo canale."
-          showAiReason={true}
-        />
+        {!demo && stato === 'loading' ? (
+          <p className="text-sm text-slate-300 animate-pulse">Carico i video del canale…</p>
+        ) : (
+          <VideoGrid
+            videos={channelVideos}
+            onSelectVideo={onSelectVideo}
+            savedVideoIds={savedVideoIds}
+            onToggleWatchLater={onToggleWatchLater}
+            emptyMessage={stato === 'error' ? 'Non sono riuscito a caricare i video del canale.' : 'Nessun video trovato per questo canale.'}
+            showAiReason={true}
+          />
+        )}
       </section>
     </div>
   );

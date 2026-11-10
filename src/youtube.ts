@@ -1,4 +1,5 @@
-import { VideoItem } from './types';
+import { ChannelDetails, VideoItem } from './types';
+import { cacheGet, cacheSet, CACHE_RICERCHE_YT, CACHE_CANALI_YT, UN_GIORNO } from './storage';
 
 /**
  * Converte la durata ISO 8601 di YouTube (es. PT1H23M45S, PT15M, PT40S)
@@ -73,16 +74,44 @@ export interface YouTubeSearchParams {
   maxResults?: number;
   fetchFn?: typeof fetch;
   relevanceLanguage?: string;
+  videoDuration?: 'any' | 'short' | 'medium' | 'long';
+  signal?: AbortSignal;
+  /** Riusa i risultati delle ultime 24 ore (default true): search.list costa 100 unità. */
+  useCache?: boolean;
+}
+
+/** Durata minima in minuti → parametro videoDuration di YouTube. */
+export function durataPerYouTube(minuti: number): 'long' | 'medium' | undefined {
+  if (minuti >= 20) return 'long';
+  if (minuti >= 4) return 'medium';
+  return undefined;
+}
+
+async function erroreYouTube(res: Response, nome: string): Promise<Error> {
+  let errBody = '';
+  try {
+    const json = await res.json();
+    errBody = json.error?.message || JSON.stringify(json);
+  } catch {
+    errBody = res.statusText;
+  }
+  return new Error(`Errore YouTube ${nome} (${res.status}): ${errBody}`);
 }
 
 /**
  * Esegue la ricerca tramite search.list di YouTube Data API v3.
  */
 export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<string[]> {
-  const { query, apiKey, maxResults = 12, fetchFn = fetch, relevanceLanguage } = params;
+  const { query, apiKey, maxResults = 12, fetchFn = fetch, relevanceLanguage, videoDuration, signal, useCache = true } = params;
 
   if (!apiKey) {
     throw new Error('Chiave API di YouTube non configurata.');
+  }
+
+  const cacheKey = [query.trim().toLowerCase(), relevanceLanguage || '', videoDuration || '', maxResults].join('|');
+  if (useCache) {
+    const salvati = cacheGet<string[]>(CACHE_RICERCHE_YT, cacheKey, UN_GIORNO);
+    if (salvati) return salvati;
   }
 
   const url = new URL('https://www.googleapis.com/youtube/v3/search');
@@ -92,18 +121,10 @@ export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<
   url.searchParams.set('q', query);
   url.searchParams.set('key', apiKey);
   if (relevanceLanguage) url.searchParams.set('relevanceLanguage', relevanceLanguage);
+  if (videoDuration && videoDuration !== 'any') url.searchParams.set('videoDuration', videoDuration);
 
-  const res = await fetchFn(url.toString());
-  if (!res.ok) {
-    let errBody = '';
-    try {
-      const json = await res.json();
-      errBody = json.error?.message || JSON.stringify(json);
-    } catch {
-      errBody = res.statusText;
-    }
-    throw new Error(`Errore YouTube search.list (${res.status}): ${errBody}`);
-  }
+  const res = await fetchFn(url.toString(), signal ? { signal } : undefined);
+  if (!res.ok) throw await erroreYouTube(res, 'search.list');
 
   const data = await res.json();
   const videoIds: string[] = [];
@@ -115,6 +136,7 @@ export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<
     }
   }
 
+  if (useCache) cacheSet(CACHE_RICERCHE_YT, cacheKey, videoIds, 200);
   return videoIds;
 }
 
@@ -122,17 +144,27 @@ export interface YouTubeVideoDetailsParams {
   videoIds: string[];
   apiKey: string;
   fetchFn?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /**
  * Recupera i dettagli completi dei video (durata, statistiche, snippet) tramite videos.list.
  */
 export async function fetchYouTubeVideoDetails(params: YouTubeVideoDetailsParams): Promise<VideoItem[]> {
-  const { videoIds, apiKey, fetchFn = fetch } = params;
+  const { videoIds, apiKey, fetchFn = fetch, signal } = params;
 
   if (videoIds.length === 0) return [];
   if (!apiKey) {
     throw new Error('Chiave API di YouTube non configurata.');
+  }
+
+  // videos.list accetta al massimo 50 id per chiamata
+  if (videoIds.length > 50) {
+    const out: VideoItem[] = [];
+    for (let i = 0; i < videoIds.length; i += 50) {
+      out.push(...(await fetchYouTubeVideoDetails({ ...params, videoIds: videoIds.slice(i, i + 50) })));
+    }
+    return out;
   }
 
   const url = new URL('https://www.googleapis.com/youtube/v3/videos');
@@ -140,17 +172,8 @@ export async function fetchYouTubeVideoDetails(params: YouTubeVideoDetailsParams
   url.searchParams.set('id', videoIds.join(','));
   url.searchParams.set('key', apiKey);
 
-  const res = await fetchFn(url.toString());
-  if (!res.ok) {
-    let errBody = '';
-    try {
-      const json = await res.json();
-      errBody = json.error?.message || JSON.stringify(json);
-    } catch {
-      errBody = res.statusText;
-    }
-    throw new Error(`Errore YouTube videos.list (${res.status}): ${errBody}`);
-  }
+  const res = await fetchFn(url.toString(), signal ? { signal } : undefined);
+  if (!res.ok) throw await erroreYouTube(res, 'videos.list');
 
   const data = await res.json();
   const videos: VideoItem[] = [];
@@ -190,4 +213,110 @@ export async function fetchYouTubeVideoDetails(params: YouTubeVideoDetailsParams
   }
 
   return videos;
+}
+
+
+// --- Canali: chi sono (channels.list, 1 unità per chiamata fino a 50 canali) ---
+
+const SETTE_GIORNI = 7 * UN_GIORNO;
+
+function numeroOpz(x: unknown): number | undefined {
+  if (x === undefined || x === null || x === '') return undefined;
+  const n = Number(x);
+  return isNaN(n) ? undefined : n;
+}
+
+export function channelFromApi(item: any): ChannelDetails {
+  const sn = item?.snippet || {};
+  const st = item?.statistics || {};
+  const th = sn.thumbnails || {};
+  return {
+    id: String(item?.id || ''),
+    title: sn.title || item?.brandingSettings?.channel?.title || 'Canale',
+    description: sn.description || item?.brandingSettings?.channel?.description || '',
+    country: sn.country || item?.brandingSettings?.channel?.country || undefined,
+    publishedAt: sn.publishedAt || undefined,
+    customUrl: sn.customUrl || undefined,
+    subscriberCount: st.hiddenSubscriberCount ? undefined : numeroOpz(st.subscriberCount),
+    videoCount: numeroOpz(st.videoCount),
+    viewCount: numeroOpz(st.viewCount),
+    thumbnailUrl: th.medium?.url || th.default?.url || th.high?.url || undefined,
+    uploadsPlaylistId: item?.contentDetails?.relatedPlaylists?.uploads || undefined,
+    topics: Array.isArray(item?.topicDetails?.topicCategories)
+      ? item.topicDetails.topicCategories.map((u: string) => decodeURIComponent(String(u).split('/').pop() || '').replace(/_/g, ' '))
+      : undefined,
+  };
+}
+
+/**
+ * Dati dei canali (titolo, descrizione, paese, data di nascita, iscritti, video, visualizzazioni…).
+ * Una sola chiamata per ogni 50 canali; i dati restano in memoria 7 giorni.
+ */
+export async function fetchChannelDetails(params: {
+  ids: string[];
+  apiKey: string;
+  fetchFn?: typeof fetch;
+  signal?: AbortSignal;
+}): Promise<Record<string, ChannelDetails>> {
+  const { apiKey, fetchFn = fetch, signal } = params;
+  const ids = Array.from(new Set(params.ids.filter(Boolean)));
+  const out: Record<string, ChannelDetails> = {};
+  const mancanti: string[] = [];
+  for (const id of ids) {
+    const c = cacheGet<ChannelDetails>(CACHE_CANALI_YT, id, SETTE_GIORNI);
+    if (c) out[id] = c; else mancanti.push(id);
+  }
+  if (mancanti.length === 0) return out;
+  if (!apiKey) throw new Error('Chiave API di YouTube non configurata.');
+
+  for (let i = 0; i < mancanti.length; i += 50) {
+    const lotto = mancanti.slice(i, i + 50);
+    const url = new URL('https://www.googleapis.com/youtube/v3/channels');
+    url.searchParams.set('part', 'snippet,statistics,brandingSettings,topicDetails,contentDetails');
+    url.searchParams.set('id', lotto.join(','));
+    url.searchParams.set('maxResults', '50');
+    url.searchParams.set('key', apiKey);
+    const res = await fetchFn(url.toString(), signal ? { signal } : undefined);
+    if (!res.ok) throw await erroreYouTube(res, 'channels.list');
+    const data = await res.json();
+    for (const item of Array.isArray(data.items) ? data.items : []) {
+      const c = channelFromApi(item);
+      if (!c.id) continue;
+      out[c.id] = c;
+      cacheSet(CACHE_CANALI_YT, c.id, c, 500);
+    }
+  }
+  return out;
+}
+
+/**
+ * Ultimi video caricati da un canale: playlist «uploads» → playlistItems.list → videos.list.
+ * Costo: circa 3 unità (contro 100 di una ricerca).
+ */
+export async function fetchChannelVideos(params: {
+  channelId: string;
+  apiKey: string;
+  maxResults?: number;
+  fetchFn?: typeof fetch;
+  signal?: AbortSignal;
+}): Promise<{ channel?: ChannelDetails; videos: VideoItem[] }> {
+  const { channelId, apiKey, maxResults = 24, fetchFn = fetch, signal } = params;
+  const canali = await fetchChannelDetails({ ids: [channelId], apiKey, fetchFn, signal });
+  const channel = canali[channelId];
+  const uploads = channel?.uploadsPlaylistId || (channelId.startsWith('UC') ? 'UU' + channelId.slice(2) : '');
+  if (!uploads) return { channel, videos: [] };
+
+  const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
+  url.searchParams.set('part', 'contentDetails');
+  url.searchParams.set('playlistId', uploads);
+  url.searchParams.set('maxResults', String(Math.min(50, maxResults)));
+  url.searchParams.set('key', apiKey);
+  const res = await fetchFn(url.toString(), signal ? { signal } : undefined);
+  if (!res.ok) throw await erroreYouTube(res, 'playlistItems.list');
+  const data = await res.json();
+  const ids: string[] = (Array.isArray(data.items) ? data.items : [])
+    .map((it: any) => it?.contentDetails?.videoId)
+    .filter(Boolean);
+  const videos = await fetchYouTubeVideoDetails({ videoIds: ids, apiKey, fetchFn, signal });
+  return { channel, videos };
 }

@@ -49,10 +49,60 @@ export interface VideoItem {
   aiQuery?: string;      // la richiesta per cui l'AI ha dato il voto
   aiSummary?: string;    // riassunto preparato all'apertura del video
   aiComment?: string;    // commento che giustifica il voto
+  aiAutore?: string;     // chi parla (dal passo 3), «non indicato» se non si capisce
+  aiAutorita?: LivelloAutorita; // autorevolezza sull'argomento (dal passo 3)
+}
+
+export type LivelloAutorita = 'alta' | 'media' | 'bassa' | 'sconosciuta';
+
+export const LIVELLI_AUTORITA: LivelloAutorita[] = ['alta', 'media', 'bassa', 'sconosciuta'];
+
+export function normalizzaLivello(x: unknown): LivelloAutorita | undefined {
+  const v = String(x ?? '').trim().toLowerCase();
+  return (LIVELLI_AUTORITA as string[]).includes(v) ? (v as LivelloAutorita) : undefined;
+}
+
+/** Una ricerca del piano: testo semplice (vecchio formato) o con la sua lingua. */
+export type PlannedQuery = string | { q: string; lingua?: string };
+
+export function testoRicerca(r: PlannedQuery): string {
+  return typeof r === 'string' ? r : r.q;
+}
+
+/** Dati di un canale da YouTube (channels.list). */
+export interface ChannelDetails {
+  id: string;
+  title: string;
+  description: string;
+  country?: string;
+  publishedAt?: string;
+  customUrl?: string;
+  subscriberCount?: number;   // assente se il canale nasconde gli iscritti
+  videoCount?: number;
+  viewCount?: number;
+  thumbnailUrl?: string;
+  uploadsPlaylistId?: string;
+  topics?: string[];
+  demo?: boolean;
+}
+
+/** «Chi parla e con quale autorità»: giudizio dell'AI su canale e relatore. */
+export interface ChiParla {
+  canale: string;
+  autore: string;
+  ruolo_affiliazione: string;
+  legittimazione: string;
+  livello: LivelloAutorita;
+  orientamento: string;
+  fonti: { titolo: string; url: string }[];
+  certezza: 'verificato' | 'dedotto';
+  webUsato: boolean;     // false = il ponte non ha potuto cercare in rete
+  at: number;
+  demo?: boolean;
 }
 
 export interface SearchPlan {
-  ricerche: string[];
+  ricerche: PlannedQuery[];
   lingue: string[];
   durata_minima_min: number;
   escludi: string[];
@@ -62,9 +112,11 @@ export interface VideoEvaluation {
   id: string;
   punteggio: number;
   motivo: string;
+  autore?: string;
+  autorita?: string;
 }
 
-export type SearchStepState = 'idle' | 'planning' | 'fetching' | 'evaluating' | 'done' | 'error';
+export type SearchStepState = 'idle' | 'planning' | 'fetching' | 'evaluating' | 'done' | 'error' | 'cancelled';
 
 export interface SearchStatus {
   step: SearchStepState;
