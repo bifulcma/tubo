@@ -75,6 +75,8 @@ export interface YouTubeSearchParams {
   fetchFn?: typeof fetch;
   relevanceLanguage?: string;
   videoDuration?: 'any' | 'short' | 'medium' | 'long';
+  publishedAfter?: string;   // RFC 3339, es. 2025-11-13T00:00:00Z
+  publishedBefore?: string;
   signal?: AbortSignal;
   /** Riusa i risultati delle ultime 24 ore (default true): search.list costa 100 unità. */
   useCache?: boolean;
@@ -103,13 +105,15 @@ async function erroreYouTube(res: Response, nome: string): Promise<Error> {
  * Esegue la ricerca tramite search.list di YouTube Data API v3.
  */
 export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<string[]> {
-  const { query, apiKey, maxResults = 12, fetchFn = fetch, relevanceLanguage, videoDuration, signal, useCache = true } = params;
+  const { query, apiKey, maxResults = 12, fetchFn = fetch, relevanceLanguage, videoDuration, publishedAfter, publishedBefore, signal, useCache = true } = params;
 
   if (!apiKey) {
     throw new Error('Chiave API di YouTube non configurata.');
   }
 
-  const cacheKey = [query.trim().toLowerCase(), relevanceLanguage || '', videoDuration || '', maxResults].join('|');
+  const cacheKey = [query.trim().toLowerCase(), relevanceLanguage || '', videoDuration || '', maxResults]
+    .concat(publishedAfter || publishedBefore ? [publishedAfter || '', publishedBefore || ''] : [])
+    .join('|');
   if (useCache) {
     const salvati = cacheGet<string[]>(CACHE_RICERCHE_YT, cacheKey, UN_GIORNO);
     if (salvati) return salvati;
@@ -123,6 +127,8 @@ export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<
   url.searchParams.set('key', apiKey);
   if (relevanceLanguage) url.searchParams.set('relevanceLanguage', relevanceLanguage);
   if (videoDuration && videoDuration !== 'any') url.searchParams.set('videoDuration', videoDuration);
+  if (publishedAfter) url.searchParams.set('publishedAfter', publishedAfter);
+  if (publishedBefore) url.searchParams.set('publishedBefore', publishedBefore);
 
   const res = await fetchFn(url.toString(), signal ? { signal } : undefined);
   if (!res.ok) throw await erroreYouTube(res, 'search.list');

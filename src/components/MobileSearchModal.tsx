@@ -10,8 +10,10 @@ import {
   Check,
   ArrowRight,
   Compass,
+  Calendar,
 } from 'lucide-react';
-import { AiProvider, AI_PROVIDERS, SavedSearch } from '../types';
+import { AiProvider, AI_PROVIDERS, Periodo, SavedSearch } from '../types';
+import { PERIODI, infoPeriodo } from '../periodo';
 
 interface MobileSearchModalProps {
   isOpen: boolean;
@@ -19,6 +21,8 @@ interface MobileSearchModalProps {
   onSearch: (query: string) => void;
   selectedAi: AiProvider;
   onSelectAi: (ai: AiProvider) => void;
+  periodo: Periodo;
+  onSelectPeriodo: (p: Periodo) => void;
   savedSearches: SavedSearch[];
   onOpenSavedSearch: (s: SavedSearch) => void;
   initialQuery?: string;
@@ -30,6 +34,8 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
   onSearch,
   selectedAi,
   onSelectAi,
+  periodo,
+  onSelectPeriodo,
   savedSearches,
   onOpenSavedSearch,
   initialQuery = '',
@@ -275,6 +281,33 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
           </div>
         </div>
 
+        {/* Periodo di pubblicazione */}
+        <div className="space-y-2 pt-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 light:text-slate-500 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+            Pubblicati:
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {PERIODI.map((p) => {
+              const sel = periodo === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onSelectPeriodo(p.id)}
+                  className={`px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer active:scale-95 ${
+                    sel
+                      ? 'border-indigo-500 bg-indigo-950/50 text-white ring-1 ring-indigo-500 light:bg-indigo-50/80 light:text-indigo-800'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-300 light:border-slate-200 light:bg-slate-100 light:text-slate-700'
+                  }`}
+                >
+                  {p.id === 'auto' ? 'Ogni data' : p.nome}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Ultime ricerche salvate (se presenti) */}
         {savedSearches.length > 0 && (
           <div className="space-y-2 pt-2">
@@ -298,7 +331,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                       {s.query}
                     </p>
                     <p className="text-[10px] text-slate-400 light:text-slate-400 mt-0.5">
-                      {AI_PROVIDERS[s.provider]?.name || s.provider} · {quando(s.at)} · {s.results.length} video
+                      {AI_PROVIDERS[s.provider]?.name || s.provider}{s.periodo && s.periodo !== 'auto' ? ` · ${infoPeriodo(s.periodo).nome.toLowerCase()}` : ''} · {quando(s.at)} · {s.results.length} video
                     </p>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />

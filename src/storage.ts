@@ -1,4 +1,4 @@
-import { AppSettings, HistoryEntry, VideoItem, AiProvider, SavedSearch } from './types';
+import { AppSettings, HistoryEntry, VideoItem, AiProvider, Periodo, SavedSearch } from './types';
 
 export const DEFAULT_BRIDGE_URL: string = '';
 
@@ -228,7 +228,7 @@ export function loadSavedSearches(): SavedSearch[] {
 }
 
 export function saveSearch(entry: SavedSearch): SavedSearch[] {
-  const key = (e: SavedSearch) => e.query.trim().toLowerCase() + '|' + e.provider;
+  const key = (e: SavedSearch) => e.query.trim().toLowerCase() + '|' + e.provider + '|' + (e.periodo || 'auto');
   const list = [entry, ...loadSavedSearches().filter((e) => key(e) !== key(entry))].slice(0, MAX_SEARCHES);
   try {
     setStorageItem(SEARCHES_KEY, JSON.stringify(list));
@@ -239,8 +239,10 @@ export function saveSearch(entry: SavedSearch): SavedSearch[] {
   return list;
 }
 
-export function removeSavedSearch(query: string, provider: AiProvider): SavedSearch[] {
-  const list = loadSavedSearches().filter((e) => !(e.query === query && e.provider === provider));
+export function removeSavedSearch(query: string, provider: AiProvider, periodo: Periodo = 'auto'): SavedSearch[] {
+  const list = loadSavedSearches().filter(
+    (e) => !(e.query === query && e.provider === provider && (e.periodo || 'auto') === periodo)
+  );
   try { setStorageItem(SEARCHES_KEY, JSON.stringify(list)); } catch { /* niente */ }
   return list;
 }

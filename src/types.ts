@@ -115,7 +115,13 @@ export interface SearchPlan {
   lingue: string[];
   durata_minima_min: number;
   escludi: string[];
+  attualita?: boolean;         // la richiesta chiede cose recenti: la data pesa nel voto
+  pubblicato_dopo?: string;    // AAAA-MM-GG (filtro a YouTube e dopo)
+  pubblicato_prima?: string;   // AAAA-MM-GG
 }
+
+/** Periodo di pubblicazione scelto dall'utente accanto alla ricerca. */
+export type Periodo = 'auto' | '7g' | '30g' | '6m' | '1a' | '3a' | '5a';
 
 export interface VideoEvaluation {
   id: string;
@@ -157,6 +163,7 @@ export interface SavedSearch {
   at: number;
   status: SearchStatus;
   results: VideoItem[];
+  periodo?: Periodo;   // assente nelle ricerche salvate prima = 'auto'
 }
 
 export const LINGUE: { code: string; nome: string; nomeNelPrompt: string }[] = [

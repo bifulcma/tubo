@@ -3,6 +3,7 @@ import {
   AiProvider,
   AppSettings,
   HistoryEntry,
+  Periodo,
   SavedSearch,
   SearchStatus,
   VideoItem,
@@ -46,6 +47,8 @@ export default function App() {
     loadSelectedAi(loadSettings().defaultProvider)
   );
   const [theme, setTheme] = useState<'dark' | 'light'>(() => loadSettings().theme || 'dark');
+  // periodo di pubblicazione scelto accanto alla ricerca (non si ricorda: ogni volta si parte da «qualsiasi data»)
+  const [periodo, setPeriodo] = useState<Periodo>('auto');
 
   // --- Indirizzi per pagina (#/video/…, #/cerca?q=…): Indietro e ricarica funzionano ---
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
@@ -101,6 +104,7 @@ export default function App() {
   });
   const [searchResults, setSearchResults] = useState<VideoItem[]>([]);
   const [searchProvider, setSearchProvider] = useState<AiProvider>(selectedAi);
+  const [searchPeriodo, setSearchPeriodo] = useState<Periodo>('auto');
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() => loadSavedSearches());
   const searchQueryRef = useRef<string | null>(null);   // ricerca mostrata o in corso
   const abortRef = useRef<AbortController | null>(null);
@@ -160,7 +164,7 @@ export default function App() {
 
   // Esecuzione della ricerca AI (una alla volta: la nuova annulla la precedente)
   const runSearch = useCallback(
-    async (query: string, provider: AiProvider) => {
+    async (query: string, provider: AiProvider, per: Periodo = 'auto') => {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -169,6 +173,7 @@ export default function App() {
       searchQueryRef.current = query;
       setSearchQuery(query);
       setSearchProvider(provider);
+      setSearchPeriodo(per);
       setSearchResults([]);
       setSearchStatus({
         step: 'planning',
@@ -181,6 +186,7 @@ export default function App() {
           query,
           provider,
           settings,
+          periodo: per,
           signal: ctrl.signal,
           onStatusUpdate: (st) => {
             if (!attiva()) return;
@@ -191,7 +197,7 @@ export default function App() {
         if (!attiva()) return;   // annullata o superata da un'altra: non tocca nulla
         setSearchResults(results);
         if (results.length > 0 && !isDemoMode(settings) && ultimo) {
-          setSavedSearches(saveSearch({ query, provider, at: Date.now(), status: ultimo, results }));
+          setSavedSearches(saveSearch({ query, provider, at: Date.now(), status: ultimo, results, ...(per !== 'auto' ? { periodo: per } : {}) }));
         }
       } catch (err: any) {
         if (isAnnullata(err, ctrl.signal)) return;
@@ -208,10 +214,10 @@ export default function App() {
       const q = query.trim();
       if (!q) return;
       searchQueryRef.current = q;
-      navigate({ page: 'search', q, ai: selectedAi });
-      runSearch(q, selectedAi);
+      navigate({ page: 'search', q, ai: selectedAi, periodo });
+      runSearch(q, selectedAi, periodo);
     },
-    [selectedAi, runSearch, navigate]
+    [selectedAi, periodo, runSearch, navigate]
   );
 
   const handleCancelSearch = () => {
@@ -230,13 +236,15 @@ export default function App() {
     searchQueryRef.current = saved.query;
     setSearchQuery(saved.query);
     setSearchProvider(saved.provider);
+    setSearchPeriodo(saved.periodo || 'auto');
+    setPeriodo(saved.periodo || 'auto');
     setSearchResults(saved.results);
     setSearchStatus(saved.status);
   };
 
   const handleOpenSavedSearch = (saved: SavedSearch) => {
     showSavedSearch(saved);
-    navigate({ page: 'search', q: saved.query, ai: saved.provider });
+    navigate({ page: 'search', q: saved.query, ai: saved.provider, periodo: saved.periodo });
   };
 
   const norm = (q: string) => q.trim().toLowerCase();
@@ -262,21 +270,30 @@ export default function App() {
     if (route.page !== 'watch') window.scrollTo({ top: 0 });
 
     if (route.page === 'search') {
-      if (searchQueryRef.current !== null && norm(searchQueryRef.current) === norm(route.q)) return;
+      if (
+        searchQueryRef.current !== null &&
+        norm(searchQueryRef.current) === norm(route.q) &&
+        searchPeriodo === (route.periodo ?? 'auto')
+      ) return;
       const ai = route.ai ?? selectedAi;
+      const per: Periodo = route.periodo ?? 'auto';
+      const stessa = (s: SavedSearch) => norm(s.query) === norm(route.q) && (s.periodo || 'auto') === per;
       const salvata =
-        savedSearches.find((s) => norm(s.query) === norm(route.q) && s.provider === ai) ??
-        savedSearches.find((s) => norm(s.query) === norm(route.q));
+        savedSearches.find((s) => stessa(s) && s.provider === ai) ??
+        savedSearches.find(stessa);
       if (salvata) {
         showSavedSearch(salvata);
       } else if (isDemoMode(settings)) {
-        runSearch(route.q, ai);
+        setPeriodo(per);
+        runSearch(route.q, ai, per);
       } else {
         // non salvata qui: non si rifà da sola (costa quota e lavoro dell'AI), si chiede
         abortRef.current?.abort();
         searchQueryRef.current = route.q;
         setSearchQuery(route.q);
         setSearchProvider(ai);
+        setSearchPeriodo(per);
+        setPeriodo(per);
         setSearchResults([]);
         setSearchStatus({ step: 'idle', message: '' });
       }
@@ -316,7 +333,7 @@ export default function App() {
   }, [route]);
 
   const handleRemoveSavedSearch = (saved: SavedSearch) => {
-    setSavedSearches(removeSavedSearch(saved.query, saved.provider));
+    setSavedSearches(removeSavedSearch(saved.query, saved.provider, saved.periodo));
   };
 
   const handleClearHistory = () => {
@@ -373,6 +390,8 @@ export default function App() {
         onNavigate={goToPage}
         selectedAi={selectedAi}
         onSelectAi={handleSelectAi}
+        periodo={periodo}
+        onSelectPeriodo={setPeriodo}
         searchQuery={searchQuery}
         onSearch={handleTriggerSearch}
         watchLaterCount={watchLater.length}
@@ -388,6 +407,8 @@ export default function App() {
         onSearch={handleTriggerSearch}
         selectedAi={selectedAi}
         onSelectAi={handleSelectAi}
+        periodo={periodo}
+        onSelectPeriodo={setPeriodo}
         savedSearches={savedSearches}
         onOpenSavedSearch={handleOpenSavedSearch}
         initialQuery={searchQuery}
@@ -415,13 +436,14 @@ export default function App() {
           <SearchResultsView
             query={searchQuery}
             provider={searchProvider}
+            periodo={searchPeriodo}
             status={searchStatus}
             videos={searchResults}
             onSelectVideo={handleSelectVideo}
             onSelectChannel={handleSelectChannel}
             savedVideoIds={savedVideoIds}
             onToggleWatchLater={handleToggleWatchLater}
-            onRetry={() => runSearch(searchQuery, searchProvider)}
+            onRetry={() => runSearch(searchQuery, searchProvider, searchPeriodo)}
             onCancel={handleCancelSearch}
             onBackToHome={() => navigate({ page: 'home' })}
           />
@@ -458,7 +480,7 @@ export default function App() {
             provider={selectedAi}
             demo={showDemoBanner}
             onBack={() =>
-              goBack(searchResults.length > 0 && searchQuery ? { page: 'search', q: searchQuery, ai: searchProvider } : { page: 'home' })
+              goBack(searchResults.length > 0 && searchQuery ? { page: 'search', q: searchQuery, ai: searchProvider, periodo: searchPeriodo } : { page: 'home' })
             }
           />
         )}

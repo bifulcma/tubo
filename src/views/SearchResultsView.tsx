@@ -1,12 +1,14 @@
-import React from 'react';
-import { Sparkles, SlidersHorizontal, ArrowLeft } from 'lucide-react';
-import { AiProvider, AI_PROVIDERS, SearchStatus, VideoItem } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Sparkles, SlidersHorizontal, ArrowLeft, Calendar } from 'lucide-react';
+import { AiProvider, AI_PROVIDERS, Periodo, SearchStatus, VideoItem } from '../types';
+import { infoPeriodo, ordinaPerData } from '../periodo';
 import { SearchProgress } from '../components/SearchProgress';
 import { VideoGrid } from '../components/VideoGrid';
 
 interface SearchResultsViewProps {
   query: string;
   provider: AiProvider;
+  periodo?: Periodo;
   status: SearchStatus;
   videos: VideoItem[];
   onSelectVideo: (video: VideoItem) => void;
@@ -21,6 +23,7 @@ interface SearchResultsViewProps {
 export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
   query,
   provider,
+  periodo = 'auto',
   status,
   videos,
   onSelectVideo,
@@ -33,6 +36,8 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 }) => {
   const currentProvider = AI_PROVIDERS[provider];
   const isFinished = status.step === 'done';
+  const [ordine, setOrdine] = useState<'voto' | 'data'>('voto');
+  const mostrati = useMemo(() => (ordine === 'data' ? ordinaPerData(videos) : videos), [videos, ordine]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -55,6 +60,15 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
               <span className="text-xs font-medium text-slate-400">
                 Curata da {currentProvider.name}
               </span>
+              {periodo !== 'auto' && (
+                <>
+                  <span className="text-xs text-slate-400">•</span>
+                  <span className="text-xs font-semibold text-sky-300 light:text-sky-700 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {infoPeriodo(periodo).nome}
+                  </span>
+                </>
+              )}
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white light:text-slate-900 line-clamp-1 mt-0.5">
               «{query}»
@@ -94,17 +108,36 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
       {/* Results Video Grid */}
       {isFinished && (
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-slate-400" />
               <h2 className="text-base font-bold text-slate-200 light:text-slate-800">
-                Video ordinati per punteggio qualitativo dell'AI
+                {ordine === 'voto'
+                  ? `Video ordinati per punteggio dell'AI${status.plan?.attualita ? ' (conta anche quanto sono recenti)' : ''}`
+                  : 'Video dal più recente al più vecchio'}
               </h2>
+            </div>
+            <div className="flex rounded-xl border border-slate-800 overflow-hidden text-xs font-semibold light:border-slate-200" role="group" aria-label="Ordine dei risultati">
+              {([['voto', 'Voto AI'], ['data', 'Più recenti']] as const).map(([id, nome]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setOrdine(id)}
+                  aria-pressed={ordine === id}
+                  className={`px-3 py-1.5 cursor-pointer transition ${
+                    ordine === id
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-900 text-slate-300 hover:text-white light:bg-white light:text-slate-700'
+                  }`}
+                >
+                  {nome}
+                </button>
+              ))}
             </div>
           </div>
 
           <VideoGrid
-            videos={videos}
+            videos={mostrati}
             onSelectVideo={onSelectVideo}
             onSelectChannel={onSelectChannel}
             savedVideoIds={savedVideoIds}

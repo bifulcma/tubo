@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Compass, Flame, History, X, Search } from 'lucide-react';
 import { VideoItem, SavedSearch, AI_PROVIDERS } from '../types';
+import { infoPeriodo } from '../periodo';
 import { VideoGrid } from '../components/VideoGrid';
 import { DEMO_VIDEOS } from '../demo/mockVideos';
 
@@ -139,7 +140,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex flex-wrap gap-2">
             {savedSearches.map((ss) => (
               <div
-                key={ss.query + ss.provider}
+                key={ss.query + ss.provider + (ss.periodo || '')}
                 className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 light:bg-white light:border-slate-200 transition"
               >
                 <button
@@ -149,7 +150,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 >
                   <span className="block text-sm font-medium text-slate-200 light:text-slate-800 max-w-[22rem] truncate">«{ss.query}»</span>
                   <span className="block text-[11px] text-slate-400">
-                    {AI_PROVIDERS[ss.provider]?.name ?? ss.provider} · {ss.results.length} video · {quando(ss.at)}
+                    {AI_PROVIDERS[ss.provider]?.name ?? ss.provider}{ss.periodo && ss.periodo !== 'auto' ? ` · ${infoPeriodo(ss.periodo).nome.toLowerCase()}` : ''} · {ss.results.length} video · {quando(ss.at)}
                   </span>
                 </button>
                 <button

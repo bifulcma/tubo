@@ -13,6 +13,7 @@ import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS, ChiParla } from '../t
 import { reviewVideo, VideoReview, digestFromTranscript, findMoment, TranscriptDigest } from '../searchOrchestrator';
 import { loadReview, saveReview, loadDigest, saveDigest } from '../storage';
 import { formatViews, formatDate } from '../youtube';
+import { etichettaData } from '../periodo';
 import { shareUrl } from '../router';
 import { fetchChannelDetails } from '../youtube';
 import { analizzaChiParla, loadChiParla } from '../chiParla';
@@ -511,6 +512,12 @@ export const WatchView: React.FC<WatchViewProps> = ({
                     </div>
                     <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
                       <span>{formatViews(item.viewCount)}</span>
+                      {etichettaData(item.publishedAt) && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-slate-300 light:text-slate-600">{etichettaData(item.publishedAt)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

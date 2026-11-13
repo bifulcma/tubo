@@ -1,7 +1,8 @@
-import { AiProvider, AppSettings, ChannelDetails, PlannedQuery, normalizzaLivello, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua, testoRicerca } from './types';
+import { AiProvider, AppSettings, ChannelDetails, Periodo, PlannedQuery, normalizzaLivello, SearchPlan, SearchStatus, VideoEvaluation, VideoItem, nomeLingua, testoRicerca } from './types';
 import { askBridge, fetchTranscript, transcriptToText } from './ponte';
 import { mockAiEvaluateVideos, mockAiFetchVideos, mockAiPlanSearch } from './demo/mockAi';
 import { durataPerYouTube, fetchChannelDetails, fetchYouTubeVideoDetails, searchYouTubeVideos } from './youtube';
+import { applicaPeriodo, descriviDate, infoPeriodo, inizioPeriodo, isoGiorno, nelPeriodo, normalizzaData, ordinaRisultati, rfc3339 } from './periodo';
 
 export interface RunSearchParams {
   query: string;
@@ -10,6 +11,8 @@ export interface RunSearchParams {
   onStatusUpdate: (status: SearchStatus) => void;
   signal?: AbortSignal;
   fetchFn?: typeof fetch;
+  periodo?: Periodo;   // criterio scelto dall'utente; 'auto' o assente = decide l'AI
+  oggi?: Date;         // per i test
 }
 
 /**
@@ -107,6 +110,9 @@ export function normalizePlan(raw: any, query: string): SearchPlan {
     lingue: lingue.length ? lingue : ['it'],
     durata_minima_min: isFinite(durata) && durata > 0 ? durata : 0,
     escludi: (Array.isArray(p.escludi) ? p.escludi : []).map((e: any) => String(e)).filter((e: string) => e.trim()),
+    attualita: p.attualita === true || p.attualita === 'true',
+    ...(normalizzaData(p.pubblicato_dopo) ? { pubblicato_dopo: normalizzaData(p.pubblicato_dopo) } : {}),
+    ...(normalizzaData(p.pubblicato_prima) ? { pubblicato_prima: normalizzaData(p.pubblicato_prima) } : {}),
   };
 }
 
@@ -132,8 +138,12 @@ export function canaleInBreve(c?: ChannelDetails): Record<string, unknown> | und
  * Orchestratore principale della ricerca guidata dall'AI (Passo 1 -> Passo 2 -> Passo 3).
  */
 export async function executeAiSearch(params: RunSearchParams): Promise<VideoItem[]> {
-  const { query, provider, settings, signal, fetchFn = fetch } = params;
+  const { query, provider, settings, signal, fetchFn = fetch, periodo = 'auto', oggi = new Date() } = params;
   const inDemo = isDemoMode(settings);
+  const oggiIso = isoGiorno(oggi);
+  const periodoScelto = periodo !== 'auto'
+    ? ` L'utente ha scelto il periodo «${infoPeriodo(periodo).nome.toLowerCase()}» (video pubblicati dal ${inizioPeriodo(periodo, oggi)}): è un vincolo, scrivi le ricerche di conseguenza.`
+    : '';
   // una ricerca annullata non deve più toccare lo schermo
   const onStatusUpdate = (st: SearchStatus) => {
     if (!signal?.aborted) params.onStatusUpdate(st);
@@ -155,7 +165,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     await sleep(400, signal);
     plan = mockAiPlanSearch(query);
   } else {
-    const systemPrompt = `Sei il motore di ricerca di Tubo. Analizza la richiesta in linguaggio naturale dell'utente e pianifica da 2 a 4 ricerche mirate per YouTube, identificando lingue, durata minima in minuti ed eventuali termini da escludere. Ogni ricerca va scritta nella lingua in cui vuoi trovare i video e porta il codice di quella lingua. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido nel seguente formato: {"ricerche": [{"q": "query 1", "lingua": "it"}, {"q": "query 2", "lingua": "de"}], "lingue": ["it", "de"], "durata_minima_min": 0, "escludi": ["parola1"]}. "lingue" elenca le lingue in ordine di preferenza (la prima è la principale). Tubo è pensato soprattutto per VIDEO LUNGHI (lezioni, conferenze, seminari): se l'utente NON chiede esplicitamente video brevi, imposta "durata_minima_min" a 20; se chiede video brevi o una durata precisa, rispetta la sua richiesta (video brevi = 0, durata precisa = quel numero di minuti). Non aggiungere alcun testo, commento o spiegazione oltre al JSON.${
+    const systemPrompt = `Sei il motore di ricerca di Tubo. Analizza la richiesta in linguaggio naturale dell'utente e pianifica da 2 a 4 ricerche mirate per YouTube, identificando lingue, durata minima in minuti ed eventuali termini da escludere. Ogni ricerca va scritta nella lingua in cui vuoi trovare i video e porta il codice di quella lingua. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido nel seguente formato: {"ricerche": [{"q": "query 1", "lingua": "it"}, {"q": "query 2", "lingua": "de"}], "lingue": ["it", "de"], "durata_minima_min": 0, "escludi": ["parola1"], "attualita": false, "pubblicato_dopo": null, "pubblicato_prima": null}. Oggi è il ${oggiIso}. "attualita" è true se la richiesta riguarda fatti recenti o in corso (notizie, «ultimi», «oggi», «adesso», «situazione attuale», sviluppi recenti, eventi degli ultimi mesi), altrimenti false. "pubblicato_dopo" e "pubblicato_prima" sono date "AAAA-MM-GG" quando la richiesta indica un periodo di pubblicazione (es. «dal 2020» → pubblicato_dopo "2020-01-01"; «dopo l'invasione del 24 febbraio 2022» → "2022-02-24"; per l'attualità metti l'inizio sensato, es. le ultime settimane o mesi), altrimenti null; non mettere date se la richiesta non le chiede. Non aggiungere date alle ricerche (q) solo per l'attualità: al periodo ci pensa il filtro.${periodoScelto} "lingue" elenca le lingue in ordine di preferenza (la prima è la principale). Tubo è pensato soprattutto per VIDEO LUNGHI (lezioni, conferenze, seminari): se l'utente NON chiede esplicitamente video brevi, imposta "durata_minima_min" a 20; se chiede video brevi o una durata precisa, rispetta la sua richiesta (video brevi = 0, durata precisa = quel numero di minuti). Non aggiungere alcun testo, commento o spiegazione oltre al JSON.${
       settings.videoLanguages?.length
         ? ` L'utente preferisce video in: ${settings.videoLanguages.map(nomeLingua).join(', ')} (codici ${settings.videoLanguages.join(', ')}): scrivi le ricerche in quelle lingue e mettile in "lingue", salvo che la richiesta ne chieda esplicitamente altre.`
         : ''
@@ -183,7 +193,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
           details: 'La prima risposta non era un JSON valido, ritento con istruzioni più stringenti…',
         });
 
-        const retryPrompt = `ERRORE: La tua risposta non era un JSON valido o conteneva testo superfluo. Rispondi ORA SOLTANTO con il JSON grezzo: {"ricerche": [{"q": "...", "lingua": "it"}], "lingue": ["..."], "durata_minima_min": 0, "escludi": ["..."]}`;
+        const retryPrompt = `ERRORE: La tua risposta non era un JSON valido o conteneva testo superfluo. Rispondi ORA SOLTANTO con il JSON grezzo: {"ricerche": [{"q": "...", "lingua": "it"}], "lingue": ["..."], "durata_minima_min": 0, "escludi": ["..."], "attualita": false, "pubblicato_dopo": null, "pubblicato_prima": null}`;
 
         planRaw = await askBridge({
           bridgeUrl: settings.bridgeUrl,
@@ -213,14 +223,15 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
   }
 
   // Normalizza campi piano (vecchio e nuovo formato)
-  plan = normalizePlan(plan, query);
+  plan = applicaPeriodo(normalizePlan(plan, query), periodo, oggi);
   controlla();
+  const date = descriviDate(plan);
 
   // --- PASSO 2: Cerco su YouTube ---
   onStatusUpdate({
     step: 'fetching',
     message: 'Cerco su YouTube…',
-    details: `Esecuzione di ${plan.ricerche.length} ricerche: ${plan.ricerche.map((r) => `"${testoRicerca(r)}"`).join(', ')}`,
+    details: `Esecuzione di ${plan.ricerche.length} ricerche: ${plan.ricerche.map((r) => `"${testoRicerca(r)}"`).join(', ')}${date ? ` · video pubblicati ${date}` : ''}`,
     plan,
   });
 
@@ -243,6 +254,8 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
           maxResults: 12,
           relevanceLanguage: linguaRicerca(r, plan),
           videoDuration,
+          publishedAfter: rfc3339(plan.pubblicato_dopo),
+          publishedBefore: rfc3339(plan.pubblicato_prima),
           signal,
           fetchFn,
         });
@@ -269,6 +282,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
 
       // Filtra durata minima ed esclusioni
       rawVideos = details.filter((video) => {
+        if (!nelPeriodo(video, plan)) return false;
         if (plan.durata_minima_min > 0 && video.durationSec < plan.durata_minima_min * 60) {
           return false;
         }
@@ -311,7 +325,7 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
   if (rawVideos.length === 0) {
     onStatusUpdate({
       step: 'done',
-      message: 'Nessun video corrisponde ai criteri dopo i filtri di durata ed esclusione.',
+      message: `Nessun video corrisponde ai criteri dopo i filtri di durata${date ? ', periodo' : ''} ed esclusione.`,
       plan,
     });
     return [];
@@ -337,10 +351,15 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
       canale: v.channelTitle,
       dati_canale: canaleInBreve(canali[v.channelId]),
       durata: v.duration,
+      pubblicato: (v.publishedAt || '').slice(0, 10) || 'sconosciuto',
       descrizione: v.description.slice(0, 800),
     }));
 
-    const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Per ogni video indica anche "autore" (chi parla, se si capisce da titolo, descrizione o canale, altrimenti "non indicato"; non inventare nomi) e "autorita" sull'argomento della richiesta: "alta" | "media" | "bassa" | "sconosciuta" (usa i dati del canale quando ci sono). Scrivi il motivo in ${nomeLingua(settings.aiLanguage)}. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase", "autore": "...", "autorita": "alta|media|bassa|sconosciuta"}]. Nessun testo prima o dopo.`;
+    const regolaData = plan.attualita
+      ? ` Oggi è il ${oggiIso} e ogni video ha la data "pubblicato". La richiesta riguarda l'ATTUALITÀ: la data pesa molto nel voto. Premia i video più recenti; penalizza (di 2-5 punti) quelli vecchi o superati dagli eventi, anche se ben fatti, e dillo nel motivo.`
+      : ` Oggi è il ${oggiIso} e ogni video ha la data "pubblicato". Tienine conto solo se conta per la richiesta (dati, ricerche o tecnologie che invecchiano, eventi successivi che cambiano il quadro); non penalizzare lezioni e classici solo perché non recenti.`;
+
+    const evalSystemPrompt = `Sei un curatore di contenuti video critico ed esigente. Valuta i video rispetto alla richiesta dell'utente: "${query}". Assegna a ciascuno un punteggio da 0 a 10 e una breve frase esplicativa sul motivo. Scarta e penalizza severamente acchiappa-clic, titoli sensazionalistici, contenuti banali, promozionali o fuori tema. Premia contenuti rigorosi, approfonditi e aderenti alla richiesta. Per ogni video indica anche "autore" (chi parla, se si capisce da titolo, descrizione o canale, altrimenti "non indicato"; non inventare nomi) e "autorita" sull'argomento della richiesta: "alta" | "media" | "bassa" | "sconosciuta" (usa i dati del canale quando ci sono).${regolaData} Scrivi il motivo in ${nomeLingua(settings.aiLanguage)}. Rispondi ESCLUSIVAMENTE con un array JSON valido nel formato: [{"id": "...", "punteggio": 0-10, "motivo": "una frase", "autore": "...", "autorita": "alta|media|bassa|sconosciuta"}]. Nessun testo prima o dopo.`;
 
     let evalRaw: string;
     try {
@@ -418,17 +437,17 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
     };
   });
 
-  // Ordina per punteggio decrescente
-  scoredVideos.sort((a, b) => (b.aiScore ?? 0) - (a.aiScore ?? 0));
+  // Ordina per punteggio decrescente (a parità, con l'attualità, prima i più recenti)
+  const ordinati = ordinaRisultati(scoredVideos, !!plan.attualita);
 
   onStatusUpdate({
     step: 'done',
     message: 'Ricerca e selezione AI completata con successo!',
-    details: `${scoredVideos.length} video ordinati per pertinenza qualitativa`,
+    details: `${ordinati.length} video ordinati per pertinenza qualitativa${plan.attualita ? ', tenendo conto di quanto sono recenti' : ''}`,
     plan,
   });
 
-  return scoredVideos;
+  return ordinati;
 }
 
 

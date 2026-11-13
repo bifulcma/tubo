@@ -33,7 +33,7 @@ describe('piano della ricerca', () => {
 
   it('ripara un piano vuoto o storto', () => {
     const p = normalizePlan({ ricerche: [], lingue: 'it', durata_minima_min: 'boh' }, 'domanda');
-    expect(p).toEqual({ ricerche: ['domanda'], lingue: ['it'], durata_minima_min: 0, escludi: [] });
+    expect(p).toEqual({ ricerche: ['domanda'], lingue: ['it'], durata_minima_min: 0, escludi: [], attualita: false });
   });
 });
 

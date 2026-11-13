@@ -1,7 +1,8 @@
 import React from 'react';
-import { Bookmark, Sparkles, Clock, Check, Play } from 'lucide-react';
+import { Bookmark, Sparkles, Clock, Check, Play, Calendar } from 'lucide-react';
 import { VideoItem } from '../types';
 import { formatViews, formatDate } from '../youtube';
+import { etichettaData } from '../periodo';
 import { RigaAutorita } from './ChiParlaBox';
 
 interface VideoCardProps {
@@ -63,6 +64,17 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             <Play className="w-6 h-6 fill-current ml-0.5" />
           </div>
         </div>
+
+        {/* Data di pubblicazione: l'anno sempre in vista */}
+        {etichettaData(video.publishedAt) && (
+          <div
+            title={formatDate(video.publishedAt)}
+            className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-sm text-white text-[11px] font-semibold tracking-wide flex items-center gap-1 shadow"
+          >
+            <Calendar className="w-3 h-3 text-slate-300" />
+            {etichettaData(video.publishedAt)}
+          </div>
+        )}
 
         {/* Duration badge */}
         {video.duration && (

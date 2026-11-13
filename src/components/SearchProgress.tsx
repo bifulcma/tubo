@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bot, Search, Sparkles, CheckCircle2, AlertCircle, RefreshCw, XCircle, Ban } from 'lucide-react';
 import { SearchStatus, testoRicerca } from '../types';
+import { descriviDate } from '../periodo';
 
 interface SearchProgressProps {
   status: SearchStatus;
@@ -157,6 +158,16 @@ export const SearchProgress: React.FC<SearchProgressProps> = ({ status, onRetry,
             {plan.durata_minima_min > 0 && (
               <span className="px-2 py-0.8 rounded-md text-xs bg-amber-950/40 text-amber-300 border border-amber-800/40 light:bg-amber-100 light:border-amber-200 light:text-amber-800">
                 ⏱️ Durata min: {plan.durata_minima_min} min
+              </span>
+            )}
+            {descriviDate(plan) && (
+              <span className="px-2 py-0.8 rounded-md text-xs bg-sky-950/40 text-sky-300 border border-sky-800/40 light:bg-sky-100 light:border-sky-200 light:text-sky-800">
+                📅 Pubblicati {descriviDate(plan)}
+              </span>
+            )}
+            {plan.attualita && (
+              <span className="px-2 py-0.8 rounded-md text-xs bg-sky-950/40 text-sky-300 border border-sky-800/40 light:bg-sky-100 light:border-sky-200 light:text-sky-800">
+                🗞️ Attualità: i più recenti pesano di più
               </span>
             )}
             {plan.escludi.length > 0 && (

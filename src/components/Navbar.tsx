@@ -11,14 +11,18 @@ import {
   ChevronDown,
   Check,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
-import { AiProvider, AI_PROVIDERS, nomeCompletoAi } from '../types';
+import { AiProvider, AI_PROVIDERS, Periodo, nomeCompletoAi } from '../types';
+import { PERIODI } from '../periodo';
 
 interface NavbarProps {
   activePage: string;
   onNavigate: (page: any, params?: any) => void;
   selectedAi: AiProvider;
   onSelectAi: (ai: AiProvider) => void;
+  periodo: Periodo;
+  onSelectPeriodo: (p: Periodo) => void;
   searchQuery: string;
   onSearch: (query: string) => void;
   watchLaterCount: number;
@@ -32,6 +36,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   selectedAi,
   onSelectAi,
+  periodo,
+  onSelectPeriodo,
   searchQuery,
   onSearch,
   watchLaterCount,
@@ -141,6 +147,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full py-2.5 pl-3 pr-2 text-base sm:text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-400 light:text-slate-900 light:placeholder:text-slate-400"
               />
             </div>
+
+            {/* Periodo di pubblicazione (criterio della ricerca) */}
+            <label
+              className={`relative shrink-0 flex items-center gap-1 pl-2.5 pr-1 border-l border-slate-800 light:border-slate-300 text-xs font-medium cursor-pointer ${
+                periodo !== 'auto' ? 'text-sky-300 light:text-sky-700' : 'text-slate-300 light:text-slate-700'
+              }`}
+              title="Periodo di pubblicazione dei video"
+            >
+              <Calendar className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600 pointer-events-none" />
+              <select
+                value={periodo}
+                onChange={(e) => onSelectPeriodo(e.target.value as Periodo)}
+                aria-label="Periodo di pubblicazione"
+                className="bg-transparent border-0 py-2 pr-1 text-xs font-medium focus:outline-none focus:ring-0 cursor-pointer appearance-none"
+              >
+                {PERIODI.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100 light:bg-white light:text-slate-900">
+                    {p.id === 'auto' ? 'Ogni data' : p.nome}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none" />
+            </label>
 
             {/* AI Selector Dropdown Pill */}
             <div className="relative shrink-0 border-l border-slate-800 light:border-slate-300" ref={dropdownRef}>
