@@ -1,3 +1,4 @@
+import { FAMIGLIA } from './famiglia';
 export type AiProvider = 'nemotron' | 'claude' | 'argon';
 
 export interface AiProviderConfig {
@@ -14,7 +15,35 @@ export function nomeCompletoAi(p: AiProviderConfig): string {
   return `${p.name} — ${p.shortDescription}`;
 }
 
-export const AI_PROVIDERS: Record<AiProvider, AiProviderConfig> = {
+/** Le AI di TuboF (Ollama Cloud sul server di Vercel): stessi id, modelli diversi. */
+const AI_FAMIGLIA: Record<AiProvider, AiProviderConfig> = {
+  nemotron: {
+    id: 'nemotron',
+    name: 'Nemotron 3 Super',
+    description: 'NVIDIA Nemotron 3 Super via Ollama Cloud: equilibrato',
+    shortDescription: 'Ollama Cloud, equilibrato',
+    isLocal: false,
+    badge: 'Cloud',
+  },
+  claude: {
+    id: 'claude',
+    name: 'GLM 5.3',
+    description: 'GLM 5.3 via Ollama Cloud: il più accurato, un po’ più lento',
+    shortDescription: 'Ollama Cloud, accurato',
+    isLocal: false,
+    badge: 'Cloud',
+  },
+  argon: {
+    id: 'argon',
+    name: 'DeepSeek Flash',
+    description: 'DeepSeek V4.1 Flash via Ollama Cloud: rapido',
+    shortDescription: 'Ollama Cloud, rapido',
+    isLocal: false,
+    badge: 'Cloud',
+  },
+};
+
+const AI_TUBO: Record<AiProvider, AiProviderConfig> = {
   nemotron: {
     id: 'nemotron',
     name: 'Nemotron 3.5',
@@ -40,6 +69,8 @@ export const AI_PROVIDERS: Record<AiProvider, AiProviderConfig> = {
     badge: 'Cloud',
   },
 };
+
+export const AI_PROVIDERS: Record<AiProvider, AiProviderConfig> = FAMIGLIA ? AI_FAMIGLIA : AI_TUBO;
 
 export interface VideoItem {
   id: string;

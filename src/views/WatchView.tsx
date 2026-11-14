@@ -10,6 +10,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { VideoItem, AiProvider, AppSettings, AI_PROVIDERS, ChiParla } from '../types';
+import { FAMIGLIA } from '../famiglia';
 import { reviewVideo, VideoReview, digestFromTranscript, findMoment, TranscriptDigest } from '../searchOrchestrator';
 import { loadReview, saveReview, loadDigest, saveDigest } from '../storage';
 import { formatViews, formatDate } from '../youtube';
@@ -350,8 +351,8 @@ export const WatchView: React.FC<WatchViewProps> = ({
             onAggiorna={() => preparaChiParla(true)}
           />
 
-          {/* Dalla trascrizione */}
-          {!finto && (
+          {/* Dalla trascrizione (non in TuboF: YouTube blocca le trascrizioni ai server cloud) */}
+          {!finto && !FAMIGLIA && (
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 light:bg-white light:border-slate-200 space-y-4">
               <h3 className="text-sm font-bold text-white light:text-slate-900">Dalla trascrizione del video</h3>
 

@@ -146,3 +146,17 @@ La configurazione di Vite utilizza `base: './'` (percorsi relativi). Questo perm
 - **iPad / iPhone (Safari)**: Tocca il pulsante *Condividi* e seleziona *Aggiungi alla schermata Home*.
 - **Android (Chrome)**: Tocca i tre puntini del menu e seleziona *Installa app* o *Aggiungi a schermata Home*.
 - **Mac (Chrome / Safari / Edge)**: Clicca sull'icona di installazione nella barra degli indirizzi o scegli *Aggiungi al Dock*.
+
+---
+
+## TuboF — la versione di famiglia (https://tubof.vercel.app)
+
+Stesso codice, costruito con `VITE_MODALITA=famiglia` e pubblicato su Vercel (progetto `tubof`, regione fra1). Il Tubo di Marco (GitHub Pages + ponte dello Studio) non cambia.
+
+- **Accesso solo su invito**: l'amministratore crea l'invito in *Impostazioni › Famiglia* e manda il link (`/#/invito?c=…`, vale 7 giorni, una volta sola); chi lo apre sceglie la sua password (minimo 10 caratteri). «Nuova password» crea un link per reimpostarla; «Togli accesso» chiude subito le sessioni di quella persona.
+- **Chiavi solo sul server** (variabili di Vercel): `OLLAMA_API_KEY`, `YOUTUBE_API_KEY`, `SEGRETO_SESSIONE`; il primo account (amministratore) nasce da `PRIMO_INVITO` + `ADMIN_EMAIL` finché non esiste nessun account.
+- **AI = Ollama Cloud** (`api/ask.js`, stessi eventi SSE del ponte): Nemotron 3 Super, GLM 5.3 (accurato), DeepSeek V4.1 Flash (rapido); modelli cambiabili con `MODELLO_NEMOTRON` / `MODELLO_CLAUDE` / `MODELLO_ARGON`. Niente ricerca in rete (la scheda «Chi parla» resta «dedotto») e niente trascrizioni.
+- **YouTube** passa da `api/yt.js` (solo search, videos, channels, playlistItems). Le ricerche si riusano per 6 ore per tutta la famiglia.
+- **Limiti al giorno** a testa: 3000 unità YouTube (≈ 30 search.list, cioè circa 10 ricerche AI) e 200 risposte AI; amministratore 4000/400. Cambiabili con `LIMITE_UNITA`, `LIMITE_AI`, `LIMITE_UNITA_ADMIN`, `LIMITE_AI_ADMIN`.
+- **Archivio**: account e inviti in un Vercel Blob privato (`tubof/utenti.json`, `tubof/inviti.json`, password con scrypt); contatori e tentativi di accesso nella Runtime Cache di Vercel.
+- **Pubblicare** (dal Mini, cartella collegata al progetto): `npx vercel deploy --prod`. Chiave YouTube: `scripts/tubof-chiave-youtube.sh` (la chiede senza mostrarla e ripubblica).

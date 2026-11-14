@@ -14,6 +14,8 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { AiProvider, AI_PROVIDERS, AppSettings, LINGUE, nomeCompletoAi } from '../types';
+import { FAMIGLIA } from '../famiglia';
+import { AccountFamiglia } from '../components/AccountFamiglia';
 import { DEFAULT_BRIDGE_URL } from '../storage';
 import { askBridge } from '../ponte';
 
@@ -108,12 +110,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Impostazioni
           </h1>
           <p className="text-xs text-slate-400 light:text-slate-500 mt-0.5">
-            Tutte le chiavi e le preferenze sono memorizzate solo sul tuo dispositivo (<code className="text-indigo-300">localStorage</code>) e mai condivise.
+            {FAMIGLIA
+              ? 'Il tuo account e le preferenze. Le preferenze restano su questo dispositivo.'
+              : <>Tutte le chiavi e le preferenze sono memorizzate solo sul tuo dispositivo (<code className="text-indigo-300">localStorage</code>) e mai condivise.</>}
           </p>
         </div>
       </div>
 
+      {FAMIGLIA && <AccountFamiglia />}
+
       {/* Mode Status Pill */}
+      {!FAMIGLIA && (
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-4 light:bg-white light:border-slate-200">
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${isActuallyDemo ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
@@ -141,8 +148,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </span>
         </label>
       </div>
+      )}
 
       <form onSubmit={handleSave} className="space-y-6">
+        {!FAMIGLIA && (<>
         {/* YouTube API Key */}
         <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 light:bg-white light:border-slate-200 space-y-3">
           <div className="flex items-center gap-2 text-indigo-400 light:text-indigo-600">
@@ -254,6 +263,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
         </div>
+
+        </>)}
 
         {/* Default AI Selection */}
         <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 light:bg-white light:border-slate-200 space-y-3">

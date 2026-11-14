@@ -1,4 +1,5 @@
 import { AppSettings, HistoryEntry, VideoItem, AiProvider, Periodo, SavedSearch } from './types';
+import { FAMIGLIA, SEGNAPOSTO_CHIAVE, PONTE_FAMIGLIA } from './famiglia';
 
 export const DEFAULT_BRIDGE_URL: string = '';
 
@@ -71,19 +72,25 @@ function removeStorageItem(key: string): void {
 export function loadSettings(): AppSettings {
   try {
     const raw = getStorageItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
+    if (!raw) return conChiaviFamiglia(DEFAULT_SETTINGS);
     const parsed = JSON.parse(raw);
     const def = (parsed.defaultProvider === 'qwen' || parsed.defaultProvider === 'gemma')
       ? 'nemotron'
       : (parsed.defaultProvider || 'nemotron');
-    return {
+    return conChiaviFamiglia({
       ...DEFAULT_SETTINGS,
       ...parsed,
       defaultProvider: def,
-    };
+    });
   } catch {
-    return DEFAULT_SETTINGS;
+    return conChiaviFamiglia(DEFAULT_SETTINGS);
   }
+}
+
+/** In TuboF chiave YouTube e ponte sono sul server: qui solo segnaposto (mai demo). */
+function conChiaviFamiglia(s: AppSettings): AppSettings {
+  if (!FAMIGLIA) return s;
+  return { ...s, youtubeApiKey: SEGNAPOSTO_CHIAVE, bridgeUrl: PONTE_FAMIGLIA, bridgeToken: SEGNAPOSTO_CHIAVE, demoMode: false };
 }
 
 export function saveSettings(settings: Partial<AppSettings>): AppSettings {

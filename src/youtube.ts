@@ -1,4 +1,5 @@
 import { ChannelDetails, VideoItem } from './types';
+import { youtubeUrl } from './famiglia';
 import { cacheGet, cacheSet, CACHE_RICERCHE_YT, CACHE_CANALI_YT, UN_GIORNO } from './storage';
 
 /**
@@ -119,7 +120,7 @@ export async function searchYouTubeVideos(params: YouTubeSearchParams): Promise<
     if (salvati) return salvati;
   }
 
-  const url = new URL('https://www.googleapis.com/youtube/v3/search');
+  const url = youtubeUrl('search');
   url.searchParams.set('part', 'snippet');
   url.searchParams.set('type', 'video');
   url.searchParams.set('maxResults', maxResults.toString());
@@ -174,7 +175,7 @@ export async function fetchYouTubeVideoDetails(params: YouTubeVideoDetailsParams
     return out;
   }
 
-  const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+  const url = youtubeUrl('videos');
   url.searchParams.set('part', 'snippet,contentDetails,statistics');
   url.searchParams.set('id', videoIds.join(','));
   url.searchParams.set('key', apiKey);
@@ -278,7 +279,7 @@ export async function fetchChannelDetails(params: {
 
   for (let i = 0; i < mancanti.length; i += 50) {
     const lotto = mancanti.slice(i, i + 50);
-    const url = new URL('https://www.googleapis.com/youtube/v3/channels');
+    const url = youtubeUrl('channels');
     url.searchParams.set('part', 'snippet,statistics,brandingSettings,topicDetails,contentDetails');
     url.searchParams.set('id', lotto.join(','));
     url.searchParams.set('maxResults', '50');
@@ -313,7 +314,7 @@ export async function fetchChannelVideos(params: {
   const uploads = channel?.uploadsPlaylistId || (channelId.startsWith('UC') ? 'UU' + channelId.slice(2) : '');
   if (!uploads) return { channel, videos: [] };
 
-  const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
+  const url = youtubeUrl('playlistItems');
   url.searchParams.set('part', 'contentDetails');
   url.searchParams.set('playlistId', uploads);
   url.searchParams.set('maxResults', String(Math.min(50, maxResults)));
