@@ -173,12 +173,12 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
 
     let planRaw: string;
     try {
-      planRaw = await askBridge({
+      planRaw = await askConRiprova({
         bridgeUrl: settings.bridgeUrl,
         token: settings.bridgeToken,
         provider,
         prompt: `Richiesta utente: "${query}"`,
-        system: systemPrompt,
+        system: systemPrompt + SOLO_TESTO,
         signal,
         fetchFn,
       });
@@ -195,12 +195,12 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
 
         const retryPrompt = `ERRORE: La tua risposta non era un JSON valido o conteneva testo superfluo. Rispondi ORA SOLTANTO con il JSON grezzo: {"ricerche": [{"q": "...", "lingua": "it"}], "lingue": ["..."], "durata_minima_min": 0, "escludi": ["..."], "attualita": false, "pubblicato_dopo": null, "pubblicato_prima": null}`;
 
-        planRaw = await askBridge({
+        planRaw = await askConRiprova({
           bridgeUrl: settings.bridgeUrl,
           token: settings.bridgeToken,
           provider,
           prompt: `${retryPrompt}\nRichiesta originale: "${query}"`,
-          system: systemPrompt,
+          system: systemPrompt + SOLO_TESTO,
           signal,
           fetchFn,
         });
@@ -363,12 +363,12 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
 
     let evalRaw: string;
     try {
-      evalRaw = await askBridge({
+      evalRaw = await askConRiprova({
         bridgeUrl: settings.bridgeUrl,
         token: settings.bridgeToken,
         provider,
         prompt: `Ecco l'elenco dei video da valutare:\n${JSON.stringify(listSummary, null, 2)}`,
-        system: evalSystemPrompt,
+        system: evalSystemPrompt + SOLO_TESTO,
         signal,
         fetchFn,
       });
@@ -385,12 +385,12 @@ export async function executeAiSearch(params: RunSearchParams): Promise<VideoIte
         });
 
         const retryPrompt = `ERRORE: La risposta precedente non era un array JSON valido. Rispondi ORA SOLTANTO con l'array JSON: [{"id": "...", "punteggio": 0-10, "motivo": "una frase", "autore": "...", "autorita": "alta|media|bassa|sconosciuta"}]`;
-        evalRaw = await askBridge({
+        evalRaw = await askConRiprova({
           bridgeUrl: settings.bridgeUrl,
           token: settings.bridgeToken,
           provider,
           prompt: `${retryPrompt}\nElenco video:\n${JSON.stringify(listSummary, null, 2)}`,
-          system: evalSystemPrompt,
+          system: evalSystemPrompt + SOLO_TESTO,
           signal,
           fetchFn,
         });
