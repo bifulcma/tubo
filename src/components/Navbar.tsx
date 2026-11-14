@@ -14,7 +14,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { AiProvider, AI_PROVIDERS, Periodo, nomeCompletoAi } from '../types';
-import { PERIODI } from '../periodo';
+import { PERIODI, infoPeriodo } from '../periodo';
 
 interface NavbarProps {
   activePage: string;
@@ -121,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Central Search Bar with AI Selector */}
         <form
           onSubmit={handleSubmit}
-          className="hidden sm:flex flex-1 max-w-2xl items-center relative"
+          className="hidden sm:flex flex-1 min-w-0 max-w-3xl items-center relative"
         >
           <div
             onClick={() => {
@@ -132,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="w-full flex items-center rounded-xl border border-slate-800 bg-slate-900/90 focus-within:border-indigo-500/80 focus-within:ring-2 focus-within:ring-indigo-500/20 transition shadow-inner light:bg-slate-100/90 light:border-slate-300 cursor-pointer sm:cursor-text"
           >
             {/* Search Input */}
-            <div className="relative flex-1 flex items-center">
+            <div className="relative flex-1 min-w-0 flex items-center">
               <Search className="w-4 h-4 ml-3.5 text-slate-400 pointer-events-none" />
               <input
                 type="text"
@@ -144,31 +144,36 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 }}
                 placeholder={largo ? 'Cosa vuoi guardare? Es. lezioni serie su Carl Schmitt' : 'Cosa vuoi guardare?'}
-                className="w-full py-2.5 pl-3 pr-2 text-base sm:text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-400 light:text-slate-900 light:placeholder:text-slate-400"
+                className="w-full min-w-0 py-2.5 pl-3 pr-2 text-base bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-100 placeholder:text-slate-400 light:text-slate-900 light:placeholder:text-slate-400"
               />
             </div>
 
             {/* Periodo di pubblicazione (criterio della ricerca) */}
             <label
-              className={`relative shrink-0 flex items-center gap-1 pl-2.5 pr-1 border-l border-slate-800 light:border-slate-300 text-xs font-medium cursor-pointer ${
+              className={`relative shrink-0 flex items-center gap-1 px-2.5 py-2 border-l border-slate-800 light:border-slate-300 text-xs font-medium cursor-pointer ${
                 periodo !== 'auto' ? 'text-sky-300 light:text-sky-700' : 'text-slate-300 light:text-slate-700'
               }`}
               title="Periodo di pubblicazione dei video"
             >
               <Calendar className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600 pointer-events-none" />
+              {/* su iPad «Ogni data» resta solo icona: lo spazio va al campo di ricerca */}
+              <span className={`whitespace-nowrap pointer-events-none ${periodo === 'auto' ? 'hidden xl:inline' : ''}`}>
+                {infoPeriodo(periodo).breve}
+              </span>
+              <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none" />
+              {/* il menu vero è trasparente sopra l'etichetta: così non occupa la larghezza della voce più lunga */}
               <select
                 value={periodo}
                 onChange={(e) => onSelectPeriodo(e.target.value as Periodo)}
                 aria-label="Periodo di pubblicazione"
-                className="bg-transparent border-0 py-2 pr-1 text-xs font-medium focus:outline-none focus:ring-0 cursor-pointer appearance-none"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
               >
                 {PERIODI.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100 light:bg-white light:text-slate-900">
-                    {p.id === 'auto' ? 'Ogni data' : p.nome}
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none" />
             </label>
 
             {/* AI Selector Dropdown Pill */}
@@ -180,7 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="Scegli il modello di intelligenza artificiale per la ricerca"
               >
                 <Bot className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600" />
-                <span className="hidden sm:inline whitespace-nowrap">{currentProvider.name}</span>
+                <span className="hidden xl:inline whitespace-nowrap">{currentProvider.name}</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
@@ -251,7 +256,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Home / Tendenze (desktop) */}
           <button
             onClick={() => onNavigate('home')}
-            className={`hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+            className={`hidden 2xl:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
               activePage === 'home'
                 ? 'bg-slate-800 text-white light:bg-slate-200 light:text-slate-900'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900/60 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100'
@@ -272,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Bookmark className="w-4 h-4" />
-            <span className="hidden lg:inline">Più tardi</span>
+            <span className="hidden 2xl:inline">Più tardi</span>
             {watchLaterCount > 0 && (
               <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-indigo-600 text-white">
                 {watchLaterCount}
@@ -291,7 +296,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <History className="w-4 h-4" />
-            <span className="hidden lg:inline">Cronologia</span>
+            <span className="hidden 2xl:inline">Cronologia</span>
           </button>
 
           {/* Impostazioni */}
