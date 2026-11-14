@@ -256,8 +256,12 @@ export const WatchView: React.FC<WatchViewProps> = ({
                 <h4 className="font-bold text-sm sm:text-base text-slate-100 group-hover:text-indigo-400 light:text-slate-900 light:group-hover:text-indigo-600 transition">
                   {video.channelTitle}
                 </h4>
-                <p className="text-xs text-slate-400 light:text-slate-500">
-                  Apri la pagina del canale
+                <p data-testid="data-sotto-titolo" className="text-xs sm:text-sm text-slate-300 light:text-slate-600">
+                  <span className="font-semibold">
+                    {video.publishedAt ? `Pubblicato il ${formatDate(video.publishedAt)}` : 'Data non specificata'}
+                  </span>
+                  {video.viewCount ? <> · {formatViews(video.viewCount)}</> : null}
+                  {video.duration ? <> · {video.duration}</> : null}
                 </p>
               </div>
             </div>
